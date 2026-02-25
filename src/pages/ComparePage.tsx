@@ -3,11 +3,11 @@ import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
 export default function ComparePage() {
-  const { products, settings } = useAppStore();
+  const { products, settings, loading } = useAppStore();
   const navigate = useNavigate();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -22,6 +22,14 @@ export default function ComparePage() {
   const toggle = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const barData = analyses.map(a => ({
     name: `${a.name.substring(0, 12)}`,
@@ -65,7 +73,6 @@ export default function ComparePage() {
 
       {analyses.length >= 2 && (
         <>
-          {/* Comparison table */}
           <div className="stat-card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -97,7 +104,6 @@ export default function ComparePage() {
             </table>
           </div>
 
-          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="stat-card">
               <h3 className="text-sm font-semibold text-muted-foreground mb-4">الفائدة vs المصاريف</h3>

@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
-import { ProductInput } from '@/types/product';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 export default function AddProduct() {
   const { addProduct } = useAppStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const presetName = searchParams.get('product') || '';
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
     name: presetName,
@@ -31,30 +32,34 @@ export default function AddProduct() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
       toast.error('يرجى إدخال اسم المنتج');
       return;
     }
-    const product: ProductInput = {
-      id: crypto.randomUUID(),
-      name: form.name.trim(),
-      purchasePrice: Number(form.purchasePrice) || 0,
-      sellingPrice: Number(form.sellingPrice) || 0,
-      receivedOrders: Number(form.receivedOrders) || 0,
-      confirmedOrders: Number(form.confirmedOrders) || 0,
-      deliveredOrders: Number(form.deliveredOrders) || 0,
-      adSpendUSD: Number(form.adSpendUSD) || 0,
-      deliveryDiscount: Number(form.deliveryDiscount) || 0,
-      packagingCost: Number(form.packagingCost) || 0,
-      dateFrom: form.dateFrom,
-      dateTo: form.dateTo,
-      createdAt: new Date().toISOString(),
-    };
-    addProduct(product);
-    toast.success('تم إضافة المنتج بنجاح');
-    navigate('/archive');
+    setLoading(true);
+    try {
+      await addProduct({
+        name: form.name.trim(),
+        purchasePrice: Number(form.purchasePrice) || 0,
+        sellingPrice: Number(form.sellingPrice) || 0,
+        receivedOrders: Number(form.receivedOrders) || 0,
+        confirmedOrders: Number(form.confirmedOrders) || 0,
+        deliveredOrders: Number(form.deliveredOrders) || 0,
+        adSpendUSD: Number(form.adSpendUSD) || 0,
+        deliveryDiscount: Number(form.deliveryDiscount) || 0,
+        packagingCost: Number(form.packagingCost) || 0,
+        dateFrom: form.dateFrom,
+        dateTo: form.dateTo,
+      });
+      toast.success('تم إضافة المنتج بنجاح');
+      navigate('/archive');
+    } catch {
+      toast.error('حدث خطأ أثناء الإضافة');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fields = [
@@ -98,7 +103,8 @@ export default function AddProduct() {
             <Input type="date" value={form.dateTo} onChange={e => handleChange('dateTo', e.target.value)} className="input-field" />
           </div>
         </div>
-        <Button type="submit" className="w-full font-semibold">
+        <Button type="submit" className="w-full font-semibold" disabled={loading}>
+          {loading && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
           إضافة المنتج
         </Button>
       </form>

@@ -7,42 +7,56 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import StatCard from '@/components/StatCard';
 import { toast } from 'sonner';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
-  const { products, settings, updateProduct } = useAppStore();
+  const { products, settings, updateProduct, loading: storeLoading } = useAppStore();
   const navigate = useNavigate();
   const product = products.find((p) => p.id === id);
 
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(product || {} as any);
+  const [saving, setSaving] = useState(false);
 
   const analysis = useMemo(() => {
     if (!product) return null;
     return calculateAnalysis(editing ? { ...product, ...form } : product, settings);
   }, [product, settings, form, editing]);
 
+  if (storeLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (!product || !analysis) {
     return <div className="text-center py-16 text-muted-foreground">المنتج غير موجود</div>;
   }
 
-  const handleSave = () => {
-    updateProduct(id!, {
-      name: form.name,
-      purchasePrice: Number(form.purchasePrice),
-      sellingPrice: Number(form.sellingPrice),
-      receivedOrders: Number(form.receivedOrders),
-      confirmedOrders: Number(form.confirmedOrders),
-      deliveredOrders: Number(form.deliveredOrders),
-      adSpendUSD: Number(form.adSpendUSD),
-      deliveryDiscount: Number(form.deliveryDiscount),
-      packagingCost: Number(form.packagingCost),
-      dateFrom: form.dateFrom,
-      dateTo: form.dateTo,
-    });
-    setEditing(false);
-    toast.success('تم تحديث المنتج');
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await updateProduct(id!, {
+        name: form.name,
+        purchasePrice: Number(form.purchasePrice),
+        sellingPrice: Number(form.sellingPrice),
+        receivedOrders: Number(form.receivedOrders),
+        confirmedOrders: Number(form.confirmedOrders),
+        deliveredOrders: Number(form.deliveredOrders),
+        adSpendUSD: Number(form.adSpendUSD),
+        deliveryDiscount: Number(form.deliveryDiscount),
+        packagingCost: Number(form.packagingCost),
+        dateFrom: form.dateFrom,
+        dateTo: form.dateTo,
+      });
+      setEditing(false);
+      toast.success('تم تحديث المنتج');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -96,7 +110,6 @@ export default function ProductDetail() {
         </Button>
       </div>
 
-      {/* Inputs section */}
       {editing && (
         <div className="stat-card">
           <h3 className="text-sm font-semibold text-muted-foreground mb-4">بيانات المنتج</h3>
@@ -104,13 +117,7 @@ export default function ProductDetail() {
             {inputFields.map((f) => (
               <div key={f.key}>
                 <Label className="text-xs text-muted-foreground mb-1 block">{f.label}</Label>
-                <Input
-                  type={f.type || 'number'}
-                  value={(form as any)[f.key]}
-                  onChange={(e) => handleChange(f.key, e.target.value)}
-                  className="input-field"
-                  step="any"
-                />
+                <Input type={f.type || 'number'} value={(form as any)[f.key]} onChange={(e) => handleChange(f.key, e.target.value)} className="input-field" step="any" />
               </div>
             ))}
             <div>
@@ -122,11 +129,13 @@ export default function ProductDetail() {
               <Input type="date" value={form.dateTo} onChange={e => handleChange('dateTo', e.target.value)} className="input-field" />
             </div>
           </div>
-          <Button onClick={handleSave} className="mt-4 w-full">حفظ التعديلات</Button>
+          <Button onClick={handleSave} className="mt-4 w-full" disabled={saving}>
+            {saving && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+            حفظ التعديلات
+          </Button>
         </div>
       )}
 
-      {/* Calculated values */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground mb-3">الحسابات</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
@@ -136,7 +145,6 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* Ratios */}
       <div>
         <h3 className="text-sm font-semibold text-muted-foreground mb-3">النسب</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -146,7 +154,6 @@ export default function ProductDetail() {
         </div>
       </div>
 
-      {/* Alerts */}
       {analysis.alerts.length > 0 && (
         <div className="stat-card space-y-2">
           <h3 className="text-sm font-semibold text-muted-foreground mb-2">التنبيهات</h3>
