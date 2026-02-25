@@ -6,8 +6,8 @@ import { toast } from 'sonner';
 export default function SettingsPage() {
   const { settings, updateSettings } = useAppStore();
 
-  const handleChange = (field: string, value: string) => {
-    updateSettings({ [field]: Number(value) || 0 });
+  const handleChange = async (field: string, value: string) => {
+    await updateSettings({ [field]: Number(value) || 0 });
     toast.success('تم تحديث الإعدادات');
   };
 

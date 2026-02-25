@@ -4,11 +4,11 @@ import { calculateAnalysis } from '@/lib/calculations';
 import { ProductAnalysis, SortField, SortOrder } from '@/types/product';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit, BarChart3, PlusCircle } from 'lucide-react';
+import { Trash2, Edit, BarChart3, PlusCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Archive() {
-  const { products, settings, deleteProduct } = useAppStore();
+  const { products, settings, deleteProduct, loading } = useAppStore();
   const navigate = useNavigate();
   const [sortField, setSortField] = useState<SortField>('netProfit');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -31,13 +31,18 @@ export default function Archive() {
     { field: 'returnRate', label: 'نسبة الإرجاع' },
   ];
 
-  const handleDelete = (id: string, name: string) => {
-    deleteProduct(id);
+  const handleDelete = async (id: string, name: string) => {
+    await deleteProduct(id);
     toast.success(`تم حذف "${name}"`);
   };
 
-  // Get unique product names for "add analysis" feature
-  const uniqueNames = [...new Set(products.map(p => p.name))];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -48,7 +53,6 @@ export default function Archive() {
         </Link>
       </div>
 
-      {/* Sort controls */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-muted-foreground">ترتيب حسب:</span>
         {sortOptions.map((opt) => (
@@ -59,9 +63,7 @@ export default function Archive() {
               else { setSortField(opt.field); setSortOrder('desc'); }
             }}
             className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              sortField === opt.field
-                ? 'bg-primary/20 text-primary'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
+              sortField === opt.field ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
             {opt.label} {sortField === opt.field ? (sortOrder === 'desc' ? '↓' : '↑') : ''}
@@ -88,7 +90,6 @@ export default function Archive() {
         </div>
       )}
 
-      {/* Comparison link */}
       {analyses.length >= 2 && (
         <div className="text-center">
           <Link to="/compare">
@@ -103,17 +104,9 @@ export default function Archive() {
 }
 
 function ProductArchiveCard({
-  analysis: a,
-  onDelete,
-  onEdit,
-  onAnalyze,
-  onAddAnalysis,
+  analysis: a, onDelete, onEdit, onAnalyze, onAddAnalysis,
 }: {
-  analysis: ProductAnalysis;
-  onDelete: () => void;
-  onEdit: () => void;
-  onAnalyze: () => void;
-  onAddAnalysis: () => void;
+  analysis: ProductAnalysis; onDelete: () => void; onEdit: () => void; onAnalyze: () => void; onAddAnalysis: () => void;
 }) {
   return (
     <div className="stat-card">

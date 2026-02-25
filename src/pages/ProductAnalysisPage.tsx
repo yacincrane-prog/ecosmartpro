@@ -3,25 +3,31 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function ProductAnalysisPage() {
   const { id } = useParams<{ id: string }>();
-  const { products, settings } = useAppStore();
+  const { products, settings, loading } = useAppStore();
   const navigate = useNavigate();
   const product = products.find(p => p.id === id);
   const [compareIds, setCompareIds] = useState<string[]>([]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!product) {
     return <div className="text-center py-16 text-muted-foreground">المنتج غير موجود</div>;
   }
 
-  // All analyses for same product name
   const sameNameProducts = products.filter(p => p.name === product.name);
   const analyses = sameNameProducts.map(p => calculateAnalysis(p, settings));
 
-  // Comparison products
   const comparisonAnalyses = compareIds.map(cid => {
     const cp = products.find(p => p.id === cid);
     return cp ? calculateAnalysis(cp, settings) : null;
@@ -36,7 +42,6 @@ export default function ProductAnalysisPage() {
   }));
 
   const otherProducts = products.filter(p => p.name !== product.name);
-  const uniqueOtherNames = [...new Set(otherProducts.map(p => p.name))];
 
   const toggleCompare = (pid: string) => {
     setCompareIds(prev => prev.includes(pid) ? prev.filter(x => x !== pid) : [...prev, pid]);
@@ -51,8 +56,7 @@ export default function ProductAnalysisPage() {
         <h2 className="text-2xl font-bold">تحاليل: {product.name}</h2>
       </div>
 
-      {/* All analyses for this product */}
-      {analyses.map((a, idx) => (
+      {analyses.map((a) => (
         <div key={a.id} className="stat-card">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold">الفترة: {a.dateFrom} → {a.dateTo}</h3>
@@ -67,8 +71,7 @@ export default function ProductAnalysisPage() {
         </div>
       ))}
 
-      {/* Comparison selector */}
-      {uniqueOtherNames.length > 0 && (
+      {otherProducts.length > 0 && (
         <div className="stat-card">
           <h3 className="text-sm font-semibold text-muted-foreground mb-3">مقارنة مع منتجات أخرى</h3>
           <div className="flex flex-wrap gap-2">
@@ -87,7 +90,6 @@ export default function ProductAnalysisPage() {
         </div>
       )}
 
-      {/* Chart */}
       {allForChart.length > 0 && (
         <div className="stat-card">
           <h3 className="text-sm font-semibold text-muted-foreground mb-4">مقارنة بصرية</h3>

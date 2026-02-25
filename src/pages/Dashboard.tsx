@@ -2,12 +2,12 @@ import { useMemo } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
-import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useState } from 'react';
 
 export default function Dashboard() {
-  const { products, settings } = useAppStore();
+  const { products, settings, loading } = useAppStore();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -45,6 +45,14 @@ export default function Dashboard() {
   ] : [];
 
   const COLORS = ['hsl(160, 84%, 39%)', 'hsl(0, 72%, 51%)', 'hsl(228, 10%, 30%)'];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
