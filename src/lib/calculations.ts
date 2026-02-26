@@ -1,4 +1,4 @@
-import { ProductInput, ProductAnalysis, Alert, GlobalSettings } from '@/types/product';
+import { ProductInput, ProductAnalysis, Alert, GlobalSettings, PeriodInput } from '@/types/product';
 
 export function calculateAnalysis(input: ProductInput, settings: GlobalSettings): ProductAnalysis {
   const unitProfit = input.sellingPrice - input.purchasePrice;
@@ -47,5 +47,67 @@ export function calculateAnalysis(input: ProductInput, settings: GlobalSettings)
     costPerDeliveredOrder,
     returnRate,
     alerts,
+  };
+}
+
+export function periodToProductInput(period: PeriodInput, productName: string): ProductInput {
+  return {
+    id: period.productId,
+    name: productName,
+    purchasePrice: period.purchasePrice,
+    sellingPrice: period.sellingPrice,
+    receivedOrders: period.receivedOrders,
+    confirmedOrders: period.confirmedOrders,
+    deliveredOrders: period.deliveredOrders,
+    adSpendUSD: period.adSpendUSD,
+    deliveryDiscount: period.deliveryDiscount,
+    packagingCost: period.packagingCost,
+    dateFrom: period.dateFrom,
+    dateTo: period.dateTo,
+    createdAt: period.createdAt,
+  };
+}
+
+export function aggregatePeriods(periods: PeriodInput[], productName: string): ProductInput {
+  if (periods.length === 0) {
+    return {
+      id: '', name: productName, purchasePrice: 0, sellingPrice: 0,
+      receivedOrders: 0, confirmedOrders: 0, deliveredOrders: 0,
+      adSpendUSD: 0, deliveryDiscount: 0, packagingCost: 0,
+      dateFrom: '', dateTo: '', createdAt: '',
+    };
+  }
+  if (periods.length === 1) return periodToProductInput(periods[0], productName);
+
+  const sorted = [...periods].sort((a, b) => a.dateFrom.localeCompare(b.dateFrom));
+  // For aggregation: sum quantities, weighted average prices
+  const totalDelivered = periods.reduce((s, p) => s + p.deliveredOrders, 0);
+  const avgPurchasePrice = totalDelivered > 0
+    ? periods.reduce((s, p) => s + p.purchasePrice * p.deliveredOrders, 0) / totalDelivered
+    : periods[0].purchasePrice;
+  const avgSellingPrice = totalDelivered > 0
+    ? periods.reduce((s, p) => s + p.sellingPrice * p.deliveredOrders, 0) / totalDelivered
+    : periods[0].sellingPrice;
+  const avgDeliveryDiscount = totalDelivered > 0
+    ? periods.reduce((s, p) => s + p.deliveryDiscount * p.deliveredOrders, 0) / totalDelivered
+    : periods[0].deliveryDiscount;
+  const avgPackagingCost = totalDelivered > 0
+    ? periods.reduce((s, p) => s + p.packagingCost * p.deliveredOrders, 0) / totalDelivered
+    : periods[0].packagingCost;
+
+  return {
+    id: periods[0].productId,
+    name: productName,
+    purchasePrice: avgPurchasePrice,
+    sellingPrice: avgSellingPrice,
+    receivedOrders: periods.reduce((s, p) => s + p.receivedOrders, 0),
+    confirmedOrders: periods.reduce((s, p) => s + p.confirmedOrders, 0),
+    deliveredOrders: totalDelivered,
+    adSpendUSD: periods.reduce((s, p) => s + p.adSpendUSD, 0),
+    deliveryDiscount: avgDeliveryDiscount,
+    packagingCost: avgPackagingCost,
+    dateFrom: sorted[0].dateFrom,
+    dateTo: sorted[sorted.length - 1].dateTo,
+    createdAt: sorted[0].createdAt,
   };
 }

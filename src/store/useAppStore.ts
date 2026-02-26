@@ -1,17 +1,20 @@
 import { create } from 'zustand';
-import { ProductInput, GlobalSettings } from '@/types/product';
+import { ProductWithPeriods, PeriodInput, GlobalSettings } from '@/types/product';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface AppState {
-  products: ProductInput[];
+  products: ProductWithPeriods[];
   settings: GlobalSettings;
   loading: boolean;
   fetchProducts: () => Promise<void>;
   fetchSettings: () => Promise<void>;
-  addProduct: (product: Omit<ProductInput, 'id' | 'createdAt'>) => Promise<void>;
-  updateProduct: (id: string, product: Partial<ProductInput>) => Promise<void>;
+  addProduct: (name: string, period: Omit<PeriodInput, 'id' | 'productId' | 'createdAt'>) => Promise<void>;
+  addPeriod: (productId: string, period: Omit<PeriodInput, 'id' | 'productId' | 'createdAt'>) => Promise<void>;
+  updatePeriod: (periodId: string, updates: Partial<Omit<PeriodInput, 'id' | 'productId' | 'createdAt'>>) => Promise<void>;
+  deletePeriod: (periodId: string) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
+  updateProduct: (id: string, updates: { name?: string }) => Promise<void>;
   updateSettings: (settings: Partial<GlobalSettings>) => Promise<void>;
 }
 
@@ -26,30 +29,49 @@ export const useAppStore = create<AppState>()((set, get) => ({
   loading: true,
 
   fetchProducts: async () => {
-    const { data, error } = await supabase
+    const { data: productsData, error: pError } = await supabase
       .from('products')
       .select('*')
       .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching products:', error);
+
+    if (pError) {
+      console.error('Error fetching products:', pError);
+      set({ loading: false });
       return;
     }
 
-    const products: ProductInput[] = (data || []).map((p) => ({
+    const { data: periodsData, error: prError } = await supabase
+      .from('product_periods')
+      .select('*')
+      .order('date_from', { ascending: false });
+
+    if (prError) {
+      console.error('Error fetching periods:', prError);
+      set({ loading: false });
+      return;
+    }
+
+    const products: ProductWithPeriods[] = (productsData || []).map((p) => ({
       id: p.id,
       name: p.name,
-      purchasePrice: Number(p.purchase_price),
-      sellingPrice: Number(p.selling_price),
-      receivedOrders: p.received_orders,
-      confirmedOrders: p.confirmed_orders,
-      deliveredOrders: p.delivered_orders,
-      adSpendUSD: Number(p.ad_spend_usd),
-      deliveryDiscount: Number(p.delivery_discount),
-      packagingCost: Number(p.packaging_cost),
-      dateFrom: p.date_from,
-      dateTo: p.date_to,
       createdAt: p.created_at,
+      periods: (periodsData || [])
+        .filter((pr) => pr.product_id === p.id)
+        .map((pr) => ({
+          id: pr.id,
+          productId: pr.product_id,
+          purchasePrice: Number(pr.purchase_price),
+          sellingPrice: Number(pr.selling_price),
+          receivedOrders: pr.received_orders,
+          confirmedOrders: pr.confirmed_orders,
+          deliveredOrders: pr.delivered_orders,
+          adSpendUSD: Number(pr.ad_spend_usd),
+          deliveryDiscount: Number(pr.delivery_discount),
+          packagingCost: Number(pr.packaging_cost),
+          dateFrom: pr.date_from,
+          dateTo: pr.date_to,
+          createdAt: pr.created_at,
+        })),
     }));
 
     set({ products, loading: false });
@@ -82,54 +104,110 @@ export const useAppStore = create<AppState>()((set, get) => ({
     }
   },
 
-  addProduct: async (product) => {
+  addProduct: async (name, period) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const { data, error } = await supabase.from('products').insert({
+    const { data: productData, error: pErr } = await supabase.from('products').insert({
       user_id: user.id,
-      name: product.name,
-      purchase_price: product.purchasePrice,
-      selling_price: product.sellingPrice,
-      received_orders: product.receivedOrders,
-      confirmed_orders: product.confirmedOrders,
-      delivered_orders: product.deliveredOrders,
-      ad_spend_usd: product.adSpendUSD,
-      delivery_discount: product.deliveryDiscount,
-      packaging_cost: product.packagingCost,
-      date_from: product.dateFrom,
-      date_to: product.dateTo,
+      name,
     }).select().single();
 
-    if (error) {
+    if (pErr || !productData) {
       toast.error('خطأ في إضافة المنتج');
+      console.error(pErr);
+      return;
+    }
+
+    const { data: periodData, error: prErr } = await supabase.from('product_periods').insert({
+      product_id: productData.id,
+      purchase_price: period.purchasePrice,
+      selling_price: period.sellingPrice,
+      received_orders: period.receivedOrders,
+      confirmed_orders: period.confirmedOrders,
+      delivered_orders: period.deliveredOrders,
+      ad_spend_usd: period.adSpendUSD,
+      delivery_discount: period.deliveryDiscount,
+      packaging_cost: period.packagingCost,
+      date_from: period.dateFrom,
+      date_to: period.dateTo,
+    }).select().single();
+
+    if (prErr || !periodData) {
+      toast.error('خطأ في إضافة الفترة');
+      console.error(prErr);
+      return;
+    }
+
+    const newProduct: ProductWithPeriods = {
+      id: productData.id,
+      name: productData.name,
+      createdAt: productData.created_at,
+      periods: [{
+        id: periodData.id,
+        productId: periodData.product_id,
+        purchasePrice: Number(periodData.purchase_price),
+        sellingPrice: Number(periodData.selling_price),
+        receivedOrders: periodData.received_orders,
+        confirmedOrders: periodData.confirmed_orders,
+        deliveredOrders: periodData.delivered_orders,
+        adSpendUSD: Number(periodData.ad_spend_usd),
+        deliveryDiscount: Number(periodData.delivery_discount),
+        packagingCost: Number(periodData.packaging_cost),
+        dateFrom: periodData.date_from,
+        dateTo: periodData.date_to,
+        createdAt: periodData.created_at,
+      }],
+    };
+    set((state) => ({ products: [newProduct, ...state.products] }));
+  },
+
+  addPeriod: async (productId, period) => {
+    const { data, error } = await supabase.from('product_periods').insert({
+      product_id: productId,
+      purchase_price: period.purchasePrice,
+      selling_price: period.sellingPrice,
+      received_orders: period.receivedOrders,
+      confirmed_orders: period.confirmedOrders,
+      delivered_orders: period.deliveredOrders,
+      ad_spend_usd: period.adSpendUSD,
+      delivery_discount: period.deliveryDiscount,
+      packaging_cost: period.packagingCost,
+      date_from: period.dateFrom,
+      date_to: period.dateTo,
+    }).select().single();
+
+    if (error || !data) {
+      toast.error('خطأ في إضافة الفترة');
       console.error(error);
       return;
     }
 
-    if (data) {
-      const newProduct: ProductInput = {
-        id: data.id,
-        name: data.name,
-        purchasePrice: Number(data.purchase_price),
-        sellingPrice: Number(data.selling_price),
-        receivedOrders: data.received_orders,
-        confirmedOrders: data.confirmed_orders,
-        deliveredOrders: data.delivered_orders,
-        adSpendUSD: Number(data.ad_spend_usd),
-        deliveryDiscount: Number(data.delivery_discount),
-        packagingCost: Number(data.packaging_cost),
-        dateFrom: data.date_from,
-        dateTo: data.date_to,
-        createdAt: data.created_at,
-      };
-      set((state) => ({ products: [newProduct, ...state.products] }));
-    }
+    const newPeriod: PeriodInput = {
+      id: data.id,
+      productId: data.product_id,
+      purchasePrice: Number(data.purchase_price),
+      sellingPrice: Number(data.selling_price),
+      receivedOrders: data.received_orders,
+      confirmedOrders: data.confirmed_orders,
+      deliveredOrders: data.delivered_orders,
+      adSpendUSD: Number(data.ad_spend_usd),
+      deliveryDiscount: Number(data.delivery_discount),
+      packagingCost: Number(data.packaging_cost),
+      dateFrom: data.date_from,
+      dateTo: data.date_to,
+      createdAt: data.created_at,
+    };
+
+    set((state) => ({
+      products: state.products.map((p) =>
+        p.id === productId ? { ...p, periods: [newPeriod, ...p.periods] } : p
+      ),
+    }));
   },
 
-  updateProduct: async (id, updates) => {
+  updatePeriod: async (periodId, updates) => {
     const dbUpdates: any = {};
-    if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.purchasePrice !== undefined) dbUpdates.purchase_price = updates.purchasePrice;
     if (updates.sellingPrice !== undefined) dbUpdates.selling_price = updates.sellingPrice;
     if (updates.receivedOrders !== undefined) dbUpdates.received_orders = updates.receivedOrders;
@@ -141,18 +219,38 @@ export const useAppStore = create<AppState>()((set, get) => ({
     if (updates.dateFrom !== undefined) dbUpdates.date_from = updates.dateFrom;
     if (updates.dateTo !== undefined) dbUpdates.date_to = updates.dateTo;
 
-    const { error } = await supabase.from('products').update(dbUpdates).eq('id', id);
+    const { error } = await supabase.from('product_periods').update(dbUpdates).eq('id', periodId);
 
     if (error) {
-      toast.error('خطأ في تحديث المنتج');
+      toast.error('خطأ في تحديث الفترة');
       console.error(error);
       return;
     }
 
     set((state) => ({
-      products: state.products.map((p) =>
-        p.id === id ? { ...p, ...updates } : p
-      ),
+      products: state.products.map((p) => ({
+        ...p,
+        periods: p.periods.map((pr) =>
+          pr.id === periodId ? { ...pr, ...updates } : pr
+        ),
+      })),
+    }));
+  },
+
+  deletePeriod: async (periodId) => {
+    const { error } = await supabase.from('product_periods').delete().eq('id', periodId);
+
+    if (error) {
+      toast.error('خطأ في حذف الفترة');
+      console.error(error);
+      return;
+    }
+
+    set((state) => ({
+      products: state.products.map((p) => ({
+        ...p,
+        periods: p.periods.filter((pr) => pr.id !== periodId),
+      })),
     }));
   },
 
@@ -167,6 +265,25 @@ export const useAppStore = create<AppState>()((set, get) => ({
 
     set((state) => ({
       products: state.products.filter((p) => p.id !== id),
+    }));
+  },
+
+  updateProduct: async (id, updates) => {
+    const dbUpdates: any = {};
+    if (updates.name !== undefined) dbUpdates.name = updates.name;
+
+    const { error } = await supabase.from('products').update(dbUpdates).eq('id', id);
+
+    if (error) {
+      toast.error('خطأ في تحديث المنتج');
+      console.error(error);
+      return;
+    }
+
+    set((state) => ({
+      products: state.products.map((p) =>
+        p.id === id ? { ...p, ...updates } : p
+      ),
     }));
   },
 

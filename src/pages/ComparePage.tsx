@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { calculateAnalysis } from '@/lib/calculations';
+import { calculateAnalysis, aggregatePeriods } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
@@ -14,7 +14,9 @@ export default function ComparePage() {
   const analyses = useMemo(
     () => selectedIds.map(id => {
       const p = products.find(x => x.id === id);
-      return p ? calculateAnalysis(p, settings) : null;
+      if (!p) return null;
+      const input = aggregatePeriods(p.periods, p.name);
+      return calculateAnalysis(input, settings);
     }).filter(Boolean) as any[],
     [selectedIds, products, settings]
   );
@@ -65,7 +67,7 @@ export default function ComparePage() {
                 selectedIds.includes(p.id) ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
-              {p.name} ({p.dateFrom})
+              {p.name} ({p.periods.length} فترات)
             </button>
           ))}
         </div>

@@ -14,7 +14,7 @@ export type Database = {
   }
   public: {
     Tables: {
-      products: {
+      product_periods: {
         Row: {
           ad_spend_usd: number
           confirmed_orders: number
@@ -24,13 +24,12 @@ export type Database = {
           delivered_orders: number
           delivery_discount: number
           id: string
-          name: string
           packaging_cost: number
+          product_id: string
           purchase_price: number
           received_orders: number
           selling_price: number
           updated_at: string
-          user_id: string
         }
         Insert: {
           ad_spend_usd?: number
@@ -41,13 +40,12 @@ export type Database = {
           delivered_orders?: number
           delivery_discount?: number
           id?: string
-          name: string
           packaging_cost?: number
+          product_id: string
           purchase_price?: number
           received_orders?: number
           selling_price?: number
           updated_at?: string
-          user_id: string
         }
         Update: {
           ad_spend_usd?: number
@@ -58,11 +56,42 @@ export type Database = {
           delivered_orders?: number
           delivery_discount?: number
           id?: string
-          name?: string
           packaging_cost?: number
+          product_id?: string
           purchase_price?: number
           received_orders?: number
           selling_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_periods_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
           updated_at?: string
           user_id?: string
         }

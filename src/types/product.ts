@@ -5,6 +5,33 @@ export interface GlobalSettings {
   confirmationCost: number;
 }
 
+export interface ProductBase {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface PeriodInput {
+  id: string;
+  productId: string;
+  purchasePrice: number;
+  sellingPrice: number;
+  receivedOrders: number;
+  confirmedOrders: number;
+  deliveredOrders: number;
+  adSpendUSD: number;
+  deliveryDiscount: number;
+  packagingCost: number;
+  dateFrom: string;
+  dateTo: string;
+  createdAt: string;
+}
+
+export interface ProductWithPeriods extends ProductBase {
+  periods: PeriodInput[];
+}
+
+// For backward compatibility with calculations
 export interface ProductInput {
   id: string;
   name: string;
@@ -22,7 +49,7 @@ export interface ProductInput {
 }
 
 export interface ProductAnalysis extends ProductInput {
-  // Calculated fields
+  periodId?: string;
   unitProfit: number;
   grossProfitNoExpenses: number;
   adSpendDZD: number;
@@ -34,7 +61,6 @@ export interface ProductAnalysis extends ProductInput {
   totalExpenses: number;
   netProfit: number;
   netProfitPerUnit: number;
-  // Ratios
   confirmationRate: number;
   deliveryToConfirmationRate: number;
   deliveryToReceivedRate: number;
@@ -42,7 +68,6 @@ export interface ProductAnalysis extends ProductInput {
   costPerConfirmedOrder: number;
   costPerDeliveredOrder: number;
   returnRate: number;
-  // Alerts
   alerts: Alert[];
 }
 
