@@ -6,8 +6,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check } from 'lucide-react';
+import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export default function Archive() {
   const { products, settings, deleteProduct, deletePeriod, addPeriod, updatePeriod, loading } = useAppStore();
@@ -19,6 +29,7 @@ export default function Archive() {
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
   const [addingPeriodFor, setAddingPeriodFor] = useState<string | null>(null);
   const [editingPeriod, setEditingPeriod] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   const productAnalyses = useMemo(() => {
     return products.map((product) => {
@@ -53,9 +64,11 @@ export default function Archive() {
     { field: 'returnRate', label: 'نسبة الإرجاع' },
   ];
 
-  const handleDeleteProduct = async (id: string, name: string) => {
-    await deleteProduct(id);
-    toast.success(`تم حذف "${name}"`);
+  const handleDeleteProduct = async () => {
+    if (!deleteConfirm) return;
+    await deleteProduct(deleteConfirm.id);
+    toast.success(`تم حذف "${deleteConfirm.name}"`);
+    setDeleteConfirm(null);
   };
 
   if (loading) {
@@ -119,7 +132,7 @@ export default function Archive() {
                   <button onClick={() => navigate(`/product/${product.id}`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-all" title="تعديل">
                     <Edit className="h-4 w-4" />
                   </button>
-                  <button onClick={() => handleDeleteProduct(product.id, product.name)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-loss transition-all" title="حذف">
+                  <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-loss transition-all" title="حذف">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -128,28 +141,35 @@ export default function Archive() {
               {/* Period selector */}
               {product.periods.length > 1 && (
                 <div className="mb-3">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    <button
-                      onClick={() => setSelectedPeriods(prev => ({ ...prev, [product.id]: 'all' }))}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                        selectedPeriodId === 'all' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      الكل
-                    </button>
-                    {product.periods.map((period) => (
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 max-w-full">
                       <button
-                        key={period.id}
-                        onClick={() => setSelectedPeriods(prev => ({ ...prev, [product.id]: period.id }))}
-                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                          selectedPeriodId === period.id ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'
+                        onClick={() => setSelectedPeriods(prev => ({ ...prev, [product.id]: 'all' }))}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                          selectedPeriodId === 'all' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'
                         }`}
                       >
-                        {period.dateFrom} → {period.dateTo}
+                        الكل ({product.periods.length})
                       </button>
-                    ))}
+                      {product.periods.map((period, idx) => (
+                        <button
+                          key={period.id}
+                          onClick={() => setSelectedPeriods(prev => ({ ...prev, [product.id]: period.id }))}
+                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                            selectedPeriodId === period.id ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground hover:text-foreground'
+                          }`}
+                        >
+                          {idx + 1}
+                        </button>
+                      ))}
+                    </div>
                   </div>
+                  {selectedPeriodId !== 'all' && (
+                    <span className="text-xs text-muted-foreground mt-1 block mr-5">
+                      {analysis.dateFrom} → {analysis.dateTo}
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -229,6 +249,23 @@ export default function Archive() {
           </Link>
         </div>
       )}
+
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
+            <AlertDialogDescription>
+              هل أنت متأكد من حذف المنتج "{deleteConfirm?.name}"؟ سيتم حذف جميع الفترات الزمنية المرتبطة به. لا يمكن التراجع عن هذا الإجراء.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogCancel>إلغاء</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteProduct} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
