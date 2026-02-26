@@ -8,14 +8,16 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 
 export default function AddProduct() {
-  const { addProduct } = useAppStore();
+  const { addProduct, addPeriod, products } = useAppStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const presetProductId = searchParams.get('productId') || '';
   const presetName = searchParams.get('product') || '';
+  const existingProduct = presetProductId ? products.find(p => p.id === presetProductId) : null;
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
-    name: presetName,
+    name: existingProduct?.name || presetName,
     purchasePrice: '',
     sellingPrice: '',
     receivedOrders: '',
@@ -34,14 +36,13 @@ export default function AddProduct() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim()) {
+    if (!existingProduct && !form.name.trim()) {
       toast.error('يرجى إدخال اسم المنتج');
       return;
     }
     setLoading(true);
     try {
-      await addProduct({
-        name: form.name.trim(),
+      const periodData = {
         purchasePrice: Number(form.purchasePrice) || 0,
         sellingPrice: Number(form.sellingPrice) || 0,
         receivedOrders: Number(form.receivedOrders) || 0,
@@ -52,8 +53,15 @@ export default function AddProduct() {
         packagingCost: Number(form.packagingCost) || 0,
         dateFrom: form.dateFrom,
         dateTo: form.dateTo,
-      });
-      toast.success('تم إضافة المنتج بنجاح');
+      };
+
+      if (existingProduct) {
+        await addPeriod(existingProduct.id, periodData);
+        toast.success('تم إضافة الفترة بنجاح');
+      } else {
+        await addProduct(form.name.trim(), periodData);
+        toast.success('تم إضافة المنتج بنجاح');
+      }
       navigate('/archive');
     } catch {
       toast.error('حدث خطأ أثناء الإضافة');
@@ -63,7 +71,6 @@ export default function AddProduct() {
   };
 
   const fields = [
-    { key: 'name', label: 'اسم المنتج', type: 'text' },
     { key: 'purchasePrice', label: 'سعر الشراء (د.ج)', type: 'number' },
     { key: 'sellingPrice', label: 'سعر البيع (د.ج)', type: 'number' },
     { key: 'receivedOrders', label: 'عدد الطلبات المستلمة', type: 'number' },
@@ -76,11 +83,25 @@ export default function AddProduct() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">إضافة تحليل منتج جديد</h2>
+      <h2 className="text-2xl font-bold mb-6">
+        {existingProduct ? `إضافة فترة لـ "${existingProduct.name}"` : 'إضافة منتج جديد'}
+      </h2>
       <form onSubmit={handleSubmit} className="stat-card space-y-5">
+        {!existingProduct && (
+          <div>
+            <Label className="text-xs text-muted-foreground mb-1.5 block">اسم المنتج</Label>
+            <Input
+              type="text"
+              value={form.name}
+              onChange={(e) => handleChange('name', e.target.value)}
+              className="input-field"
+              placeholder="اسم المنتج"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {fields.map((f) => (
-            <div key={f.key} className={f.key === 'name' ? 'sm:col-span-2' : ''}>
+            <div key={f.key}>
               <Label className="text-xs text-muted-foreground mb-1.5 block">{f.label}</Label>
               <Input
                 type={f.type}
@@ -88,7 +109,7 @@ export default function AddProduct() {
                 onChange={(e) => handleChange(f.key, e.target.value)}
                 className="input-field"
                 placeholder={f.label}
-                step={f.type === 'number' ? 'any' : undefined}
+                step="any"
               />
             </div>
           ))}
@@ -105,7 +126,7 @@ export default function AddProduct() {
         </div>
         <Button type="submit" className="w-full font-semibold" disabled={loading}>
           {loading && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
-          إضافة المنتج
+          {existingProduct ? 'إضافة الفترة' : 'إضافة المنتج'}
         </Button>
       </form>
     </div>

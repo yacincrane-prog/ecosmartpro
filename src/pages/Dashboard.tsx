@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useAppStore } from '@/store/useAppStore';
-import { calculateAnalysis } from '@/lib/calculations';
+import { calculateAnalysis, periodToProductInput } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
 import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
@@ -12,10 +12,21 @@ export default function Dashboard() {
   const [dateTo, setDateTo] = useState('');
 
   const analyses = useMemo(() => {
-    let filtered = products;
-    if (dateFrom) filtered = filtered.filter(p => p.dateFrom >= dateFrom || p.dateTo >= dateFrom);
-    if (dateTo) filtered = filtered.filter(p => p.dateTo <= dateTo || p.dateFrom <= dateTo);
-    return filtered.map((p) => calculateAnalysis(p, settings));
+    // Flatten all periods across products
+    const allPeriods = products.flatMap(p =>
+      p.periods.map(period => ({
+        period,
+        productName: p.name,
+      }))
+    );
+
+    let filtered = allPeriods;
+    if (dateFrom) filtered = filtered.filter(({ period }) => period.dateFrom >= dateFrom || period.dateTo >= dateFrom);
+    if (dateTo) filtered = filtered.filter(({ period }) => period.dateTo <= dateTo || period.dateFrom <= dateTo);
+
+    return filtered.map(({ period, productName }) =>
+      calculateAnalysis(periodToProductInput(period, productName), settings)
+    );
   }, [products, settings, dateFrom, dateTo]);
 
   const totals = useMemo(() => {
