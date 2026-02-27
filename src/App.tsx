@@ -13,6 +13,7 @@ import ProductDetail from "@/pages/ProductDetail";
 import ProductAnalysisPage from "@/pages/ProductAnalysisPage";
 import ComparePage from "@/pages/ComparePage";
 import TestingLab from "@/pages/TestingLab";
+import CreativeImageLab from "@/pages/CreativeImageLab";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -45,6 +46,7 @@ function ProtectedRoutes() {
         <Route path="/product/:id/analysis" element={<ProductAnalysisPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/testing-lab" element={<TestingLab />} />
+        <Route path="/creative-lab" element={<CreativeImageLab />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>

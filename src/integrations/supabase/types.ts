@@ -106,6 +106,60 @@ export type Database = {
           },
         ]
       }
+      creative_generations: {
+        Row: {
+          aspect_ratio: string
+          bullet_points: string[] | null
+          created_at: string
+          creative_idea: string | null
+          cta_text: string | null
+          generated_image_url: string | null
+          headline: string | null
+          id: string
+          message_type: string
+          product_description: string | null
+          product_name: string
+          source_images: string[] | null
+          subheadline: string | null
+          text_layout: string | null
+          user_id: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          bullet_points?: string[] | null
+          created_at?: string
+          creative_idea?: string | null
+          cta_text?: string | null
+          generated_image_url?: string | null
+          headline?: string | null
+          id?: string
+          message_type?: string
+          product_description?: string | null
+          product_name?: string
+          source_images?: string[] | null
+          subheadline?: string | null
+          text_layout?: string | null
+          user_id: string
+        }
+        Update: {
+          aspect_ratio?: string
+          bullet_points?: string[] | null
+          created_at?: string
+          creative_idea?: string | null
+          cta_text?: string | null
+          generated_image_url?: string | null
+          headline?: string | null
+          id?: string
+          message_type?: string
+          product_description?: string | null
+          product_name?: string
+          source_images?: string[] | null
+          subheadline?: string | null
+          text_layout?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       product_periods: {
         Row: {
           ad_spend_usd: number
