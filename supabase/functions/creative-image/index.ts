@@ -90,22 +90,12 @@ serve(async (req) => {
 - لا تكتب أكثر من 5 كلمات في سطر واحد`;
     }
 
-    userContent.push({
-      type: "text",
-      text: `أنشئ صورة إعلانية تسويقية احترافية بالمواصفات التالية:
+    // Simple, direct prompt that triggers image generation
+    const promptText = safeMode
+      ? `Generate a professional marketing ad image for the product "${productName}". Concept: ${creativeIdea}. Size: ${aspect.size}. Do NOT include any text or writing on the image. Leave clean space for text overlay. Modern, attractive design with vibrant colors.`
+      : `Generate a professional marketing ad image for the product "${productName}". Concept: ${creativeIdea}. Size: ${aspect.size}. Include this Arabic text on the image in bold clean font: "${safeHeadline}". Add a button with text: "${safeCta}". Modern attractive design with vibrant colors. Make sure Arabic text reads right-to-left and letters are connected.`;
 
-المنتج: ${productName}
-الفكرة الإبداعية: ${creativeIdea}
-المقاس: ${aspect.label} ${aspect.size}
-${textInstructions}
-
-التعليمات البصرية:
-- ادمج صورة المنتج في تصميم عصري واحترافي
-- استخدم ألوان جذابة ومتناسقة
-- اجعل الخلفية تبرز المنتج
-- التصميم موجه للسوق الجزائري
-- اترك مساحات كافية للنصوص`
-    });
+    userContent.push({ type: "text", text: promptText });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -116,7 +106,6 @@ ${textInstructions}
       body: JSON.stringify({
         model: "google/gemini-2.5-flash-image",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },
         ],
         modalities: ["image", "text"],
