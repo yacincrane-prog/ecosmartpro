@@ -6,8 +6,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight, Bot } from 'lucide-react';
 import { toast } from 'sonner';
+import AIChatDrawer from '@/components/AIChatDrawer';
 import {
   AlertDialog,
   AlertDialogAction,
