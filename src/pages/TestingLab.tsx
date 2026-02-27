@@ -10,7 +10,8 @@ import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, RotateCcw, Image, Link, Video, DollarSign, FlaskConical, Star, X, ExternalLink, Upload, Loader2 } from 'lucide-react';
+import { Plus, Trash2, RotateCcw, Image, Link, Video, DollarSign, FlaskConical, Star, X, ExternalLink, Upload, Loader2, Bot } from 'lucide-react';
+import AIChatDrawer from '@/components/AIChatDrawer';
 
 export default function TestingLab() {
   const { products, loading, fetchTestProducts, addTestProduct, trashProduct, restoreProduct, deleteProductPermanently, addCompetitor, deleteCompetitor, saveScore } = useTestLabStore();
@@ -151,7 +152,22 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
   const [expanded, setExpanded] = useState(false);
   const totalScore = product.score ? calculateTotalScore(product.score) : null;
   const label = totalScore !== null ? getScoreLabelInfo(getScoreLabel(totalScore)) : null;
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
 
+  const productContext = {
+    productName: product.name,
+    description: product.description,
+    competitors: product.competitors.map(c => ({ websiteUrl: c.websiteUrl, videoUrl: c.videoUrl, sellingPrice: c.sellingPrice })),
+    score: product.score ? {
+      solvesProblem: product.score.solvesProblem,
+      wowFactor: product.score.wowFactor,
+      hasVideos: product.score.hasVideos,
+      smallNoVariants: product.score.smallNoVariants,
+      sellingNow: product.score.sellingNow,
+      totalScore,
+      label: label?.text,
+    } : null,
+  };
   return (
     <Card className="glass-card overflow-hidden">
       <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -179,6 +195,29 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
 
       {expanded && (
         <CardContent className="space-y-6 border-t border-border/50 pt-4">
+          {/* AI Score Card */}
+          {totalScore !== null && label && (
+            <div className={`rounded-xl p-4 border ${totalScore >= 70 ? 'border-profit/30 bg-profit/5' : totalScore >= 45 ? 'border-warning/30 bg-warning/5' : 'border-destructive/30 bg-destructive/5'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-primary" />
+                  AI Product Score
+                </span>
+                <div className="text-right">
+                  <span className="text-3xl font-bold">{totalScore}</span>
+                  <span className="text-sm text-muted-foreground">/100</span>
+                </div>
+              </div>
+              <p className={`text-sm font-medium ${label.color}`}>{label.text}</p>
+            </div>
+          )}
+
+          {/* Discuss with AI */}
+          <Button variant="outline" className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10" onClick={() => setAiDrawerOpen(true)}>
+            <Bot className="h-4 w-4" />
+            ناقش هذا المنتج مع الذكاء الاصطناعي
+          </Button>
+
           {/* Competitors */}
           <CompetitorsSection product={product} onAdd={onAddCompetitor} onDelete={onDeleteCompetitor} />
 
@@ -186,6 +225,15 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
           <ScoringSection product={product} onSave={onSaveScore} />
         </CardContent>
       )}
+
+      <AIChatDrawer
+        open={aiDrawerOpen}
+        onOpenChange={setAiDrawerOpen}
+        initialContext={productContext}
+        initialMessage={`حلل هذا المنتج بالتفصيل: ${product.name}`}
+        contextType="product"
+        contextId={product.id}
+      />
     </Card>
   );
 }

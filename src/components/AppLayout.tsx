@@ -4,6 +4,7 @@ import { LayoutDashboard, PlusCircle, Archive, Settings, BarChart3, LogOut, Flas
 import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from 'sonner';
+import AIChatButton from '@/components/AIChatButton';
 
 const navItems = [
   { path: '/', label: 'لوحة القيادة', icon: LayoutDashboard },
@@ -69,6 +70,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="container py-6 animate-fade-in">{children}</main>
+      <AIChatButton />
     </div>
   );
 }
