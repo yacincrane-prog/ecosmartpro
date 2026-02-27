@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Archive, Settings, BarChart3, LogOut } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Archive, Settings, BarChart3, LogOut, FlaskConical } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from 'sonner';
@@ -9,6 +9,7 @@ const navItems = [
   { path: '/', label: 'لوحة القيادة', icon: LayoutDashboard },
   { path: '/add', label: 'إضافة منتج', icon: PlusCircle },
   { path: '/archive', label: 'الأرشيف', icon: Archive },
+  { path: '/testing-lab', label: 'مختبر المنتجات', icon: FlaskConical },
   { path: '/settings', label: 'الإعدادات', icon: Settings },
 ];
 
