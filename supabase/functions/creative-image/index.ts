@@ -5,99 +5,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// No system prompt for image generation models - instructions go in user message
+
+// Truncate text to max word count
 function truncateWords(text: string, maxWords: number): string {
   if (!text) return text;
   const words = text.trim().split(/\s+/);
   return words.slice(0, maxWords).join(' ');
 }
 
+// Validate Arabic text quality
 function validateArabicText(text: string): { valid: boolean; reason?: string } {
   if (!text || text.trim().length === 0) return { valid: true };
+  
+  // Check for isolated/broken characters pattern
   const brokenPattern = /[\u0600-\u06FF]\s[\u0600-\u06FF]\s[\u0600-\u06FF]\s[\u0600-\u06FF]/;
   if (brokenPattern.test(text) && text.replace(/\s/g, '').length < text.length * 0.4) {
     return { valid: false, reason: "broken_characters" };
   }
+  
+  // Check for excessive mixed Arabic/Latin
   const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
   const latinChars = (text.match(/[a-zA-Z]/g) || []).length;
   if (arabicChars > 0 && latinChars > 0 && latinChars > arabicChars * 0.5) {
     return { valid: false, reason: "mixed_languages" };
   }
+  
   return { valid: true };
-}
-
-// Try OpenAI DALL-E 3
-async function tryOpenAI(prompt: string, size: string, apiKey: string): Promise<string | null> {
-  try {
-    console.log("[creative-image] Trying OpenAI DALL-E 3...");
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt,
-        n: 1,
-        size,
-        quality: "hd",
-        response_format: "url",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI DALL-E error:", response.status, errorText);
-      return null;
-    }
-
-    const data = await response.json();
-    return data.data?.[0]?.url || null;
-  } catch (e) {
-    console.error("OpenAI exception:", e);
-    return null;
-  }
-}
-
-// Fallback: Lovable AI Gateway (Gemini image model)
-async function tryLovableAI(prompt: string, apiKey: string, imageUrl?: string): Promise<string | null> {
-  try {
-    console.log("[creative-image] Trying Lovable AI Gateway (Gemini)...");
-    const userContent: any[] = [];
-    if (imageUrl) {
-      userContent.push({ type: "image_url", image_url: { url: imageUrl } });
-    }
-    userContent.push({ type: "text", text: prompt });
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [{ role: "user", content: userContent }],
-        modalities: ["image", "text"],
-      }),
-    });
-
-    if (!response.ok) {
-      const t = await response.text();
-      console.error("Lovable AI error:", response.status, t);
-      return null;
-    }
-
-    const data = await response.json();
-    const message = data.choices?.[0]?.message;
-    return message?.images?.[0]?.image_url?.url
-      || message?.images?.[0]?.url
-      || message?.image?.url
-      || null;
-  } catch (e) {
-    console.error("Lovable AI exception:", e);
-    return null;
-  }
 }
 
 serve(async (req) => {
@@ -105,10 +39,8 @@ serve(async (req) => {
 
   try {
     const { productName, headline, subheadline, bulletPoints, ctaText, creativeIdea, aspectRatio, imageUrl, safeMode } = await req.json();
-
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!OPENAI_API_KEY && !LOVABLE_API_KEY) throw new Error("No API key configured");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     // Enforce text length limits
     const safeHeadline = truncateWords(headline, 5);
@@ -116,51 +48,104 @@ serve(async (req) => {
     const safeBulletPoints = (bulletPoints || []).slice(0, 3).map((bp: string) => truncateWords(bp, 4));
     const safeCta = truncateWords(ctaText, 3);
 
+    // Validate text quality
     const headlineValid = validateArabicText(safeHeadline);
     const subValid = validateArabicText(safeSubheadline);
+    
     console.log(`[ARABIC-QA] headline valid: ${headlineValid.valid}, sub valid: ${subValid.valid}`);
 
-    const sizeMap: Record<string, string> = {
-      "1:1": "1024x1024",
-      "4:5": "1024x1024",
-      "9:16": "1024x1792",
-      "landing": "1024x1792",
+    const aspectMap: Record<string, { label: string; size: string }> = {
+      "1:1": { label: "مربع", size: "1024x1024" },
+      "4:5": { label: "عمودي", size: "1024x1280" },
+      "9:16": { label: "ستوري", size: "1024x1792" },
+      "landing": { label: "طويل", size: "1024x3072" },
     };
-    const size = sizeMap[aspectRatio] || "1024x1024";
 
-    // Build prompt
-    let prompt: string;
+    const aspect = aspectMap[aspectRatio] || aspectMap["1:1"];
+    const userContent: any[] = [];
+
+    if (imageUrl) {
+      userContent.push({ type: "image_url", image_url: { url: imageUrl } });
+    }
+
+    // Build prompt based on safe mode
+    let textInstructions: string;
     if (safeMode) {
-      prompt = `Professional marketing advertisement image for the product "${productName}". Creative concept: ${creativeIdea}. Do NOT include any text, letters, words or writing on the image at all. Leave clean empty space for text overlay later. Modern attractive design with vibrant colors, high quality product photography style.`;
+      textInstructions = `
+لا تكتب أي نص عربي على الصورة نهائياً.
+فقط أنشئ صورة إعلانية احترافية نظيفة بدون أي كتابة.
+اترك مساحات فارغة واضحة لإضافة النصوص لاحقاً برمجياً.`;
     } else {
-      prompt = `Professional marketing advertisement image for the product "${productName}". Creative concept: ${creativeIdea}. The image should include Arabic text "${safeHeadline}" as the main headline in bold clean font, and a call-to-action button with text "${safeCta}". Modern attractive design with vibrant colors. Arabic text must be right-to-left with connected letters.`;
+      textInstructions = `
+النصوص المطلوبة على الصورة (بخط عريض واضح، عربي متصل، بدون حركات):
+- العنوان: ${safeHeadline}
+- السطر الفرعي: ${safeSubheadline}
+- CTA: ${safeCta}
+
+تعليمات الخط:
+- استخدم خط Kufi عريض ونظيف
+- تأكد أن كل الحروف العربية متصلة بشكل صحيح
+- اتجاه الكتابة من اليمين إلى اليسار
+- تباين عالٍ بين لون النص والخلفية
+- لا تكتب أكثر من 5 كلمات في سطر واحد`;
     }
 
-    // Try OpenAI first, fallback to Lovable AI
-    let imageData: string | null = null;
-    let usedProvider = "";
+    // Simple, direct prompt that triggers image generation
+    const promptText = safeMode
+      ? `Generate a professional marketing ad image for the product "${productName}". Concept: ${creativeIdea}. Size: ${aspect.size}. Do NOT include any text or writing on the image. Leave clean space for text overlay. Modern, attractive design with vibrant colors.`
+      : `Generate a professional marketing ad image for the product "${productName}". Concept: ${creativeIdea}. Size: ${aspect.size}. Include this Arabic text on the image in bold clean font: "${safeHeadline}". Add a button with text: "${safeCta}". Modern attractive design with vibrant colors. Make sure Arabic text reads right-to-left and letters are connected.`;
 
-    if (OPENAI_API_KEY) {
-      imageData = await tryOpenAI(prompt, size, OPENAI_API_KEY);
-      if (imageData) usedProvider = "openai";
+    userContent.push({ type: "text", text: promptText });
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [
+          { role: "user", content: userContent },
+        ],
+        modalities: ["image", "text"],
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "تم تجاوز حد الطلبات، حاول لاحقاً" }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "يرجى إضافة رصيد للمتابعة" }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const t = await response.text();
+      console.error("Image gen error:", response.status, t);
+      throw new Error("Image generation failed");
     }
 
-    if (!imageData && LOVABLE_API_KEY) {
-      imageData = await tryLovableAI(prompt, LOVABLE_API_KEY, imageUrl || undefined);
-      if (imageData) usedProvider = "lovable-ai";
-    }
+    const data = await response.json();
+    const message = data.choices?.[0]?.message;
+    const imageData = message?.images?.[0]?.image_url?.url 
+      || message?.images?.[0]?.url
+      || message?.image?.url;
+    const textContent = message?.content || "";
 
     if (!imageData) {
-      throw new Error("فشل توليد الصورة من جميع المصادر");
+      console.error("Full AI response:", JSON.stringify(data).substring(0, 2000));
+      throw new Error("No image generated");
     }
 
-    console.log(`[creative-image] Success via ${usedProvider}, safeMode: ${!!safeMode}`);
+    console.log(`[ARABIC-QA] Image generated successfully, safeMode: ${!!safeMode}`);
 
-    return new Response(JSON.stringify({
-      imageUrl: imageData,
-      description: "",
+    return new Response(JSON.stringify({ 
+      imageUrl: imageData, 
+      description: textContent,
       safeMode: !!safeMode,
-      provider: usedProvider,
       textData: safeMode ? {
         headline: safeHeadline,
         subheadline: safeSubheadline,
