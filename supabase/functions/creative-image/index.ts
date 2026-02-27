@@ -5,16 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SYSTEM_PROMPT = `أنت "ARABIC-TYPE-GENIUS"، النظام المتخصص في هندسة المطالبات البصرية (Visual Prompt Engineering) مع تركيز مطلق على سلامة الخط العربي داخل الصور.
-
-## قواعد صارمة للنص العربي:
-- يُمنع منعاً باتاً توليد حروف منفصلة، معكوسة، أو مشوهة
-- لا يتجاوز أي سطر نصي 5 كلمات كحد أقصى
-- لا تستخدم الحركات (فتحة، ضمة، إلخ) نهائياً
-- الكتابة دائماً من اليمين إلى اليسار (RTL)
-- إذا كانت الجملة معقدة بصرياً، قم بتبسيطها فوراً
-- Render Arabic text with clean bold Kufi style, ensuring letters are connected correctly
-- استخدم خط عريض واضح مع تباين عالٍ بين النص والخلفية`;
+// No system prompt for image generation models - instructions go in user message
 
 // Truncate text to max word count
 function truncateWords(text: string, maxWords: number): string {
