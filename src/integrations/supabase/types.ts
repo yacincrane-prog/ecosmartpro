@@ -97,6 +97,118 @@ export type Database = {
         }
         Relationships: []
       }
+      test_product_competitors: {
+        Row: {
+          created_at: string
+          id: string
+          selling_price: number
+          test_product_id: string
+          video_url: string | null
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          selling_price?: number
+          test_product_id: string
+          video_url?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          selling_price?: number
+          test_product_id?: string
+          video_url?: string | null
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_product_competitors_test_product_id_fkey"
+            columns: ["test_product_id"]
+            isOneToOne: false
+            referencedRelation: "test_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_product_scores: {
+        Row: {
+          created_at: string
+          has_videos: number
+          id: string
+          selling_now: number
+          small_no_variants: number
+          solves_problem: number
+          test_product_id: string
+          updated_at: string
+          wow_factor: number
+        }
+        Insert: {
+          created_at?: string
+          has_videos?: number
+          id?: string
+          selling_now?: number
+          small_no_variants?: number
+          solves_problem?: number
+          test_product_id: string
+          updated_at?: string
+          wow_factor?: number
+        }
+        Update: {
+          created_at?: string
+          has_videos?: number
+          id?: string
+          selling_now?: number
+          small_no_variants?: number
+          solves_problem?: number
+          test_product_id?: string
+          updated_at?: string
+          wow_factor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "test_product_scores_test_product_id_fkey"
+            columns: ["test_product_id"]
+            isOneToOne: true
+            referencedRelation: "test_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      test_products: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
           confirmation_cost: number
