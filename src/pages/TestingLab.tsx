@@ -332,14 +332,8 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
     setAiLoading(true);
     setAiReasoning('');
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-auto-score`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('ai-auto-score', {
+        body: {
           productName: product.name,
           description: product.description,
           imageUrl: product.imageUrl || null,
@@ -348,15 +342,11 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
             videoUrl: c.videoUrl,
             sellingPrice: c.sellingPrice,
           })),
-        }),
+        },
       });
 
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({ error: 'خطأ' }));
-        throw new Error(err.error || 'فشل التقييم');
-      }
-
-      const result = await resp.json();
+      if (error) throw error;
+      const result = data;
       setScores({
         solvesProblem: result.solvesProblem,
         wowFactor: result.wowFactor,
