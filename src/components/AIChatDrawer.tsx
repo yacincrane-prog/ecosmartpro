@@ -13,6 +13,7 @@ interface AIChatDrawerProps {
   onOpenChange: (open: boolean) => void;
   initialContext?: any;
   initialMessage?: string;
+  initialImageUrl?: string;
   contextType?: string;
   contextId?: string;
 }
@@ -26,7 +27,7 @@ const SUGGESTIONS = [
   'ما هي المنتجات الخاسرة؟',
 ];
 
-export default function AIChatDrawer({ open, onOpenChange, initialContext, initialMessage, contextType, contextId }: AIChatDrawerProps) {
+export default function AIChatDrawer({ open, onOpenChange, initialContext, initialMessage, initialImageUrl, contextType, contextId }: AIChatDrawerProps) {
   const { messages, isLoading, sendMessage, resetChat, loadConversation, conversationId } = useAIChat();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
@@ -37,7 +38,7 @@ export default function AIChatDrawer({ open, onOpenChange, initialContext, initi
   useEffect(() => {
     if (open && initialMessage && !sentInitial.current && messages.length === 0) {
       sentInitial.current = true;
-      sendMessage(initialMessage, initialContext);
+      sendMessage(initialMessage, initialContext, initialImageUrl);
     }
   }, [open, initialMessage]);
 
