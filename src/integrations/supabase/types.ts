@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_memory: {
+        Row: {
+          context_data: Json | null
+          created_at: string
+          decision: string | null
+          id: string
+          product_id: string | null
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          context_data?: Json | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          product_id?: string | null
+          summary: string
+          user_id: string
+        }
+        Update: {
+          context_data?: Json | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          product_id?: string | null
+          summary?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_conversations: {
+        Row: {
+          context_id: string | null
+          context_type: string
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context_id?: string | null
+          context_type?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context_id?: string | null
+          context_type?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_periods: {
         Row: {
           ad_spend_usd: number
