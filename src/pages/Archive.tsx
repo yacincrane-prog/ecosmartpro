@@ -153,20 +153,23 @@ export default function Archive() {
                     {selectedPeriodId === 'all' ? `${product.periods.length} فترات` : `${analysis.dateFrom} → ${analysis.dateTo}`}
                   </span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setAddingPeriodFor(addingPeriodFor === product.id ? null : product.id)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="إضافة فترة جديدة">
-                    <PlusCircle className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => navigate(`/product/${product.id}/analysis`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="عرض التحاليل">
-                    <BarChart3 className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => navigate(`/product/${product.id}`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-all" title="تعديل">
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-loss transition-all" title="حذف">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => handleAnalyzeWithAI(product, analysis)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="تحليل بالذكاء الاصطناعي">
+                      <Bot className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setAddingPeriodFor(addingPeriodFor === product.id ? null : product.id)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="إضافة فترة جديدة">
+                      <PlusCircle className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => navigate(`/product/${product.id}/analysis`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="عرض التحاليل">
+                      <BarChart3 className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => navigate(`/product/${product.id}`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-all" title="تعديل">
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-loss transition-all" title="حذف">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
               </div>
 
               {/* Period selector */}
