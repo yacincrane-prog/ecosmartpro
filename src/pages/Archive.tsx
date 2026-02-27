@@ -31,6 +31,36 @@ export default function Archive() {
   const [addingPeriodFor, setAddingPeriodFor] = useState<string | null>(null);
   const [editingPeriod, setEditingPeriod] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
+  const [aiContext, setAiContext] = useState<any>(null);
+  const [aiInitialMessage, setAiInitialMessage] = useState<string>('');
+
+  const handleAnalyzeWithAI = (product: any, analysis: any) => {
+    const contextData = {
+      product: {
+        name: product.name,
+        periods: product.periods,
+      },
+      analysis: {
+        netProfit: analysis.netProfit,
+        confirmationRate: analysis.confirmationRate,
+        deliveryToConfirmationRate: analysis.deliveryToConfirmationRate,
+        deliveryToReceivedRate: analysis.deliveryToReceivedRate,
+        returnRate: analysis.returnRate,
+        cpaConfirmed: analysis.cpaConfirmed,
+        cpaDelivered: analysis.cpaDelivered,
+        profitPerDelivered: analysis.profitPerDelivered,
+        totalRevenue: analysis.totalRevenue,
+        totalCosts: analysis.totalCosts,
+        adSpendDZD: analysis.adSpendDZD,
+        alerts: analysis.alerts,
+      },
+      settings,
+    };
+    setAiContext(contextData);
+    setAiInitialMessage(`حلل لي منتج "${product.name}" بالتفصيل وأعطني قرارك`);
+    setAiDrawerOpen(true);
+  };
 
   const productAnalyses = useMemo(() => {
     return products.map((product) => {
