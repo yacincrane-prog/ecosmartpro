@@ -25,14 +25,90 @@ function validateArabicText(text: string): { valid: boolean; reason?: string } {
   return { valid: true };
 }
 
+// Try OpenAI DALL-E 3
+async function tryOpenAI(prompt: string, size: string, apiKey: string): Promise<string | null> {
+  try {
+    console.log("[creative-image] Trying OpenAI DALL-E 3...");
+    const response = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt,
+        n: 1,
+        size,
+        quality: "hd",
+        response_format: "url",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI DALL-E error:", response.status, errorText);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.data?.[0]?.url || null;
+  } catch (e) {
+    console.error("OpenAI exception:", e);
+    return null;
+  }
+}
+
+// Fallback: Lovable AI Gateway (Gemini image model)
+async function tryLovableAI(prompt: string, apiKey: string, imageUrl?: string): Promise<string | null> {
+  try {
+    console.log("[creative-image] Trying Lovable AI Gateway (Gemini)...");
+    const userContent: any[] = [];
+    if (imageUrl) {
+      userContent.push({ type: "image_url", image_url: { url: imageUrl } });
+    }
+    userContent.push({ type: "text", text: prompt });
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image",
+        messages: [{ role: "user", content: userContent }],
+        modalities: ["image", "text"],
+      }),
+    });
+
+    if (!response.ok) {
+      const t = await response.text();
+      console.error("Lovable AI error:", response.status, t);
+      return null;
+    }
+
+    const data = await response.json();
+    const message = data.choices?.[0]?.message;
+    return message?.images?.[0]?.image_url?.url
+      || message?.images?.[0]?.url
+      || message?.image?.url
+      || null;
+  } catch (e) {
+    console.error("Lovable AI exception:", e);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { productName, headline, subheadline, bulletPoints, ctaText, creativeIdea, aspectRatio, imageUrl, safeMode } = await req.json();
-    
+
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!OPENAI_API_KEY && !LOVABLE_API_KEY) throw new Error("No API key configured");
 
     // Enforce text length limits
     const safeHeadline = truncateWords(headline, 5);
@@ -52,7 +128,7 @@ serve(async (req) => {
     };
     const size = sizeMap[aspectRatio] || "1024x1024";
 
-    // Build prompt for DALL-E
+    // Build prompt
     let prompt: string;
     if (safeMode) {
       prompt = `Professional marketing advertisement image for the product "${productName}". Creative concept: ${creativeIdea}. Do NOT include any text, letters, words or writing on the image at all. Leave clean empty space for text overlay later. Modern attractive design with vibrant colors, high quality product photography style.`;
@@ -60,55 +136,31 @@ serve(async (req) => {
       prompt = `Professional marketing advertisement image for the product "${productName}". Creative concept: ${creativeIdea}. The image should include Arabic text "${safeHeadline}" as the main headline in bold clean font, and a call-to-action button with text "${safeCta}". Modern attractive design with vibrant colors. Arabic text must be right-to-left with connected letters.`;
     }
 
-    console.log(`[creative-image] Calling OpenAI DALL-E, size: ${size}, safeMode: ${!!safeMode}`);
+    // Try OpenAI first, fallback to Lovable AI
+    let imageData: string | null = null;
+    let usedProvider = "";
 
-    const response = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt,
-        n: 1,
-        size,
-        quality: "hd",
-        response_format: "url",
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("OpenAI DALL-E error:", response.status, errorText);
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "تم تجاوز حد الطلبات، حاول لاحقاً" }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402 || response.status === 401) {
-        return new Response(JSON.stringify({ error: "خطأ في مفتاح API أو الرصيد" }), {
-          status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`Image generation failed: ${response.status}`);
+    if (OPENAI_API_KEY) {
+      imageData = await tryOpenAI(prompt, size, OPENAI_API_KEY);
+      if (imageData) usedProvider = "openai";
     }
 
-    const data = await response.json();
-    const imageData = data.data?.[0]?.url;
+    if (!imageData && LOVABLE_API_KEY) {
+      imageData = await tryLovableAI(prompt, LOVABLE_API_KEY, imageUrl || undefined);
+      if (imageData) usedProvider = "lovable-ai";
+    }
 
     if (!imageData) {
-      console.error("No image in DALL-E response:", JSON.stringify(data).substring(0, 1000));
-      throw new Error("No image generated");
+      throw new Error("فشل توليد الصورة من جميع المصادر");
     }
 
-    console.log(`[creative-image] Image generated successfully, safeMode: ${!!safeMode}`);
+    console.log(`[creative-image] Success via ${usedProvider}, safeMode: ${!!safeMode}`);
 
     return new Response(JSON.stringify({
       imageUrl: imageData,
-      description: data.data?.[0]?.revised_prompt || "",
+      description: "",
       safeMode: !!safeMode,
+      provider: usedProvider,
       textData: safeMode ? {
         headline: safeHeadline,
         subheadline: safeSubheadline,
