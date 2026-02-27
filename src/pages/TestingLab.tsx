@@ -318,6 +318,8 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
     smallNoVariants: product.score?.smallNoVariants ?? 0,
     sellingNow: product.score?.sellingNow ?? 0,
   }));
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiReasoning, setAiReasoning] = useState('');
 
   const tempScore = {
     id: '', testProductId: product.id,
@@ -325,6 +327,50 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
   };
   const total = calculateTotalScore(tempScore);
   const label = getScoreLabelInfo(getScoreLabel(total));
+
+  const handleAIScore = async () => {
+    setAiLoading(true);
+    setAiReasoning('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-auto-score`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          productName: product.name,
+          description: product.description,
+          imageUrl: product.imageUrl || null,
+          competitors: product.competitors.map(c => ({
+            websiteUrl: c.websiteUrl,
+            videoUrl: c.videoUrl,
+            sellingPrice: c.sellingPrice,
+          })),
+        }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: 'خطأ' }));
+        throw new Error(err.error || 'فشل التقييم');
+      }
+
+      const result = await resp.json();
+      setScores({
+        solvesProblem: result.solvesProblem,
+        wowFactor: result.wowFactor,
+        hasVideos: result.hasVideos,
+        smallNoVariants: result.smallNoVariants,
+        sellingNow: result.sellingNow,
+      });
+      if (result.reasoning) setAiReasoning(result.reasoning);
+    } catch (e: any) {
+      console.error(e);
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   return (
     <div>
@@ -337,6 +383,23 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
           <span className={`text-sm font-medium ${label.color}`}>{label.text}</span>
         </div>
       </div>
+
+      {/* AI Auto Score Button */}
+      <Button
+        variant="outline"
+        className="w-full mb-4 gap-2 border-primary/30 text-primary hover:bg-primary/10"
+        onClick={handleAIScore}
+        disabled={aiLoading}
+      >
+        {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
+        {aiLoading ? 'الذكاء الاصطناعي يحلل المنتج...' : 'تقييم تلقائي بالذكاء الاصطناعي'}
+      </Button>
+
+      {aiReasoning && (
+        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
+          <span className="font-medium text-primary">رأي الذكاء الاصطناعي:</span> {aiReasoning}
+        </div>
+      )}
 
       <div className="space-y-4">
         {SCORE_CRITERIA.map((c) => (
