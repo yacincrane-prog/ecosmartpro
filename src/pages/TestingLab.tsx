@@ -235,6 +235,8 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
         contextId={product.id}
       />
     </Card>
+  );
+}
 
 function CompetitorsSection({ product, onAdd, onDelete }: { product: TestProduct; onAdd: (id: string, c: any) => void; onDelete: (id: string) => void }) {
   const [adding, setAdding] = useState(false);
