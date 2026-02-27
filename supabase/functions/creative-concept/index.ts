@@ -111,11 +111,24 @@ serve(async (req) => {
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
+    console.log("[creative-concept] Raw AI response length:", content.length);
+    console.log("[creative-concept] Raw AI response preview:", content.substring(0, 500));
     
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON in response");
+    // Try to extract JSON from response - handle markdown code blocks
+    let jsonStr = "";
+    const codeBlockMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    const rawJsonMatch = content.match(/\{[\s\S]*\}/);
     
-    const concept = JSON.parse(jsonMatch[0]);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1];
+    } else if (rawJsonMatch) {
+      jsonStr = rawJsonMatch[0];
+    } else {
+      console.error("[creative-concept] No JSON found in:", content);
+      throw new Error("No JSON in response");
+    }
+    
+    const concept = JSON.parse(jsonStr);
 
     // Enforce limits on output
     if (concept.headline) {
