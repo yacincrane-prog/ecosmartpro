@@ -79,10 +79,20 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    const textContent = data.choices?.[0]?.message?.content || "";
+    console.log("AI response keys:", JSON.stringify(Object.keys(data)));
+    console.log("choices[0].message keys:", JSON.stringify(Object.keys(data.choices?.[0]?.message || {})));
+    
+    // Try multiple paths for the image
+    const message = data.choices?.[0]?.message;
+    const imageData = message?.images?.[0]?.image_url?.url 
+      || message?.images?.[0]?.url
+      || message?.image?.url;
+    const textContent = message?.content || "";
 
-    if (!imageData) throw new Error("No image generated");
+    if (!imageData) {
+      console.error("Full AI response:", JSON.stringify(data).substring(0, 2000));
+      throw new Error("No image generated");
+    }
 
     return new Response(JSON.stringify({ imageUrl: imageData, description: textContent }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
