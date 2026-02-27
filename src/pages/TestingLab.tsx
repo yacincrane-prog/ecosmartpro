@@ -157,6 +157,7 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
   const productContext = {
     productName: product.name,
     description: product.description,
+    imageUrl: product.imageUrl || null,
     competitors: product.competitors.map(c => ({ websiteUrl: c.websiteUrl, videoUrl: c.videoUrl, sellingPrice: c.sellingPrice })),
     score: product.score ? {
       solvesProblem: product.score.solvesProblem,
@@ -168,6 +169,11 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
       label: label?.text,
     } : null,
   };
+
+  const initialAIMessage = product.imageUrl 
+    ? `انظر لصورة هذا المنتج "${product.name}" وحلله بصرياً، ابحث عنه وأعطني معلومات ونصائح مختصرة حوله.`
+    : `حلل هذا المنتج باختصار: ${product.name}`;
+
   return (
     <Card className="glass-card overflow-hidden">
       <CardHeader className="pb-3 cursor-pointer" onClick={() => setExpanded(!expanded)}>
@@ -230,7 +236,8 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
         open={aiDrawerOpen}
         onOpenChange={setAiDrawerOpen}
         initialContext={productContext}
-        initialMessage={`حلل هذا المنتج بالتفصيل: ${product.name}`}
+        initialMessage={initialAIMessage}
+        initialImageUrl={product.imageUrl || undefined}
         contextType="product"
         contextId={product.id}
       />
