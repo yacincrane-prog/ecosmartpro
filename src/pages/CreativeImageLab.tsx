@@ -6,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   Paintbrush, Upload, Loader2, Download, RefreshCw, Pencil, Trash2, Image as ImageIcon,
-  Sparkles, LayoutGrid, RectangleVertical, Smartphone, FileText, X, Archive
+  Sparkles, LayoutGrid, RectangleVertical, Smartphone, FileText, X, Archive,
+  Type, ShieldCheck, AlertTriangle
 } from 'lucide-react';
 
 const MESSAGE_TYPES = [
@@ -66,6 +66,11 @@ export default function CreativeImageLab() {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [editingText, setEditingText] = useState(false);
 
+  // Safe Arabic Mode
+  const [safeMode, setSafeMode] = useState(false);
+  const [textOverlayMode, setTextOverlayMode] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
   // Archive
   const [generations, setGenerations] = useState<Generation[]>([]);
   const [loadingArchive, setLoadingArchive] = useState(false);
@@ -111,6 +116,9 @@ export default function CreativeImageLab() {
     setGeneratingConcept(true);
     setConcept(null);
     setGeneratedImage(null);
+    setSafeMode(false);
+    setTextOverlayMode(false);
+    setRetryCount(0);
     try {
       const { data, error } = await supabase.functions.invoke('creative-concept', {
         body: { productName, description, messageType, aspectRatio, imageUrls },
@@ -125,9 +133,27 @@ export default function CreativeImageLab() {
     setGeneratingConcept(false);
   };
 
-  const generateImage = async () => {
+  const regenerateTextOnly = async () => {
+    if (!productName.trim()) return;
+    setGeneratingConcept(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('creative-concept', {
+        body: { productName, description, messageType, aspectRatio, imageUrls },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setConcept(data);
+      toast.success('تم إعادة توليد النصوص');
+    } catch (e: any) {
+      toast.error(e.message || 'فشل إعادة توليد النص');
+    }
+    setGeneratingConcept(false);
+  };
+
+  const generateImage = async (forceSafeMode = false) => {
     if (!concept) return;
     setGeneratingImage(true);
+    const useSafeMode = forceSafeMode || safeMode;
     try {
       const { data, error } = await supabase.functions.invoke('creative-image', {
         body: {
@@ -139,12 +165,21 @@ export default function CreativeImageLab() {
           creativeIdea: concept.creative_idea,
           aspectRatio,
           imageUrl: imageUrls[0] || null,
+          safeMode: useSafeMode,
         },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+      
       setGeneratedImage(data.imageUrl);
-      toast.success('تم توليد الصورة');
+      
+      if (useSafeMode || data.safeMode) {
+        setSafeMode(true);
+        setTextOverlayMode(true);
+        toast.success('تم توليد الصورة بدون نص (وضع الأمان)');
+      } else {
+        toast.success('تم توليد الصورة');
+      }
 
       // Save to archive
       if (user) {
@@ -166,6 +201,13 @@ export default function CreativeImageLab() {
         fetchArchive();
       }
     } catch (e: any) {
+      // Auto-retry with safe mode on first failure
+      if (retryCount === 0 && !useSafeMode) {
+        setRetryCount(1);
+        toast.warning('فشل التوليد، جاري إعادة المحاولة بوضع الأمان...');
+        setGeneratingImage(false);
+        return generateImage(true);
+      }
       toast.error(e.message || 'فشل توليد الصورة');
     }
     setGeneratingImage(false);
@@ -187,6 +229,9 @@ export default function CreativeImageLab() {
   const resetForm = () => {
     setConcept(null);
     setGeneratedImage(null);
+    setSafeMode(false);
+    setTextOverlayMode(false);
+    setRetryCount(0);
   };
 
   return (
@@ -320,6 +365,21 @@ export default function CreativeImageLab() {
                 </div>
               </div>
 
+              {/* Safe Mode Toggle */}
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
+                <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">وضع الأمان (Safe Arabic Mode)</p>
+                  <p className="text-xs text-muted-foreground">توليد الصورة بدون نص عربي + إضافة النصوص برمجياً</p>
+                </div>
+                <button
+                  onClick={() => setSafeMode(!safeMode)}
+                  className={`w-11 h-6 rounded-full transition-colors relative ${safeMode ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <div className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-all ${safeMode ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+
               <Button
                 onClick={generateConcept}
                 disabled={generatingConcept || !productName.trim()}
@@ -350,10 +410,14 @@ export default function CreativeImageLab() {
                     <Sparkles className="h-5 w-5 text-primary" />
                     المفهوم الإبداعي
                   </span>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={() => setEditingText(!editingText)}>
                       <Pencil className="h-4 w-4" />
                       {editingText ? 'إنهاء التعديل' : 'تعديل النص'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={regenerateTextOnly} disabled={generatingConcept}>
+                      <Type className="h-4 w-4" />
+                      إعادة توليد النص فقط
                     </Button>
                     <Button variant="outline" size="sm" onClick={generateConcept} disabled={generatingConcept}>
                       <RefreshCw className="h-4 w-4" />
@@ -446,8 +510,18 @@ export default function CreativeImageLab() {
                   </div>
                 </div>
 
+                {/* Safe Mode Info */}
+                {safeMode && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <ShieldCheck className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      وضع الأمان مفعّل: سيتم توليد الصورة بدون نص عربي. النصوص ستظهر منفصلة أسفل الصورة للنسخ واللصق يدوياً.
+                    </p>
+                  </div>
+                )}
+
                 <Button
-                  onClick={generateImage}
+                  onClick={() => generateImage()}
                   disabled={generatingImage}
                   className="w-full"
                   size="lg"
@@ -460,7 +534,7 @@ export default function CreativeImageLab() {
                   ) : (
                     <>
                       <ImageIcon className="h-5 w-5" />
-                      توليد الصورة الإعلانية
+                      {safeMode ? 'توليد صورة بدون نص (وضع الأمان)' : 'توليد الصورة الإعلانية'}
                     </>
                   )}
                 </Button>
@@ -476,9 +550,21 @@ export default function CreativeImageLab() {
                   <span className="flex items-center gap-2">
                     <ImageIcon className="h-5 w-5 text-primary" />
                     الصورة الناتجة
+                    {textOverlayMode && (
+                      <span className="text-xs font-normal bg-primary/10 text-primary px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" />
+                        وضع الأمان
+                      </span>
+                    )}
                   </span>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={generateImage} disabled={generatingImage}>
+                  <div className="flex gap-2 flex-wrap">
+                    {!safeMode && (
+                      <Button variant="outline" size="sm" onClick={() => { setSafeMode(true); generateImage(true); }} disabled={generatingImage}>
+                        <ShieldCheck className="h-4 w-4" />
+                        تحويل لوضع الأمان
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => generateImage()} disabled={generatingImage}>
                       <RefreshCw className="h-4 w-4" />
                       إعادة توليد
                     </Button>
@@ -489,7 +575,7 @@ export default function CreativeImageLab() {
                   </div>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="flex justify-center">
                   <img
                     src={generatedImage}
@@ -501,6 +587,42 @@ export default function CreativeImageLab() {
                     }}
                   />
                 </div>
+
+                {/* Text Overlay Panel - shown in safe mode */}
+                {textOverlayMode && concept && (
+                  <div className="space-y-3 p-4 rounded-lg border border-primary/20 bg-primary/5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Type className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-medium text-foreground">النصوص الإعلانية (للنسخ واللصق)</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="p-2 rounded bg-muted/30 border border-border/30">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">العنوان</p>
+                        <p className="text-sm font-bold text-foreground select-all cursor-pointer" dir="rtl">{concept.headline}</p>
+                      </div>
+                      <div className="p-2 rounded bg-muted/30 border border-border/30">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">النص الثانوي</p>
+                        <p className="text-sm text-foreground select-all cursor-pointer" dir="rtl">{concept.subheadline}</p>
+                      </div>
+                    </div>
+                    {concept.bullet_points?.length > 0 && (
+                      <div className="p-2 rounded bg-muted/30 border border-border/30">
+                        <p className="text-[10px] text-muted-foreground mb-0.5">النقاط</p>
+                        {concept.bullet_points.map((bp, i) => (
+                          <p key={i} className="text-sm text-foreground select-all cursor-pointer" dir="rtl">• {bp}</p>
+                        ))}
+                      </div>
+                    )}
+                    <div className="p-2 rounded bg-primary/10 border border-primary/30">
+                      <p className="text-[10px] text-muted-foreground mb-0.5">CTA</p>
+                      <p className="text-sm font-bold text-primary select-all cursor-pointer" dir="rtl">{concept.cta_text}</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      اضغط على أي نص لتحديده ونسخه. أضف النصوص يدوياً باستخدام أداة تصميم مثل Canva أو Figma.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
