@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type AIMessage = { role: 'user' | 'assistant'; content: string };
+export type AIMessage = { role: 'user' | 'assistant'; content: string; imageUrl?: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
 
@@ -51,14 +51,14 @@ export function useAIChat() {
     });
   }, []);
 
-  const sendMessage = useCallback(async (input: string, contextData?: any) => {
+  const sendMessage = useCallback(async (input: string, contextData?: any, imageUrl?: string) => {
     let convId = conversationId;
     if (!convId) {
       convId = await createConversation(input.substring(0, 50));
       if (!convId) return;
     }
 
-    const userMsg: AIMessage = { role: 'user', content: input };
+    const userMsg: AIMessage = { role: 'user', content: input, imageUrl };
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
 
@@ -76,7 +76,7 @@ export function useAIChat() {
           Authorization: `Bearer ${session?.access_token}`,
         },
         body: JSON.stringify({
-          messages: allMessages.map(m => ({ role: m.role, content: m.content })),
+          messages: allMessages.map(m => ({ role: m.role, content: m.content, ...(m.imageUrl ? { imageUrl: m.imageUrl } : {}) })),
           contextData,
           conversationId: convId,
         }),
