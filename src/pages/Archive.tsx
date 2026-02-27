@@ -300,6 +300,13 @@ export default function Archive() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AIChatDrawer
+        open={aiDrawerOpen}
+        onOpenChange={(open) => { setAiDrawerOpen(open); if (!open) { setAiContext(null); setAiInitialMessage(''); } }}
+        initialContext={aiContext}
+        initialMessage={aiInitialMessage}
+      />
     </div>
   );
 }
