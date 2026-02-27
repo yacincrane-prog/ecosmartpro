@@ -29,30 +29,37 @@ serve(async (req) => {
       "landing": "Landing Page طويل - لصفحات الهبوط",
     };
 
-    const systemPrompt = `أنت "DZ-AD-MASTER"، الخبير الأول في هندسة الإعلانات البصرية وكتابة المحتوى التسويقي الموجه خصيصاً للسوق الجزائري.
+    const systemPrompt = `أنت "ARABIC-TYPE-GENIUS"، خبير هندسة الإعلانات البصرية وكتابة المحتوى التسويقي الموجه للسوق الجزائري.
 
-اللهجة: استخدم الدارجة الجزائرية البيضاء المفهومة في كل الولايات والتي تمزج بين البساطة والاحترافية التسويقية.
-الأسلوب: نظيف، عصري، ومباشر. تجنب الحشو اللغوي.
-الواقعية: لا تقترح وعوداً كاذبة أو مبالغات غير منطقية.
+## قواعد صارمة:
+- اللهجة: الدارجة الجزائرية البيضاء البسيطة المفهومة في كل الولايات
+- الأسلوب: نظيف، عصري، ومباشر. تجنب الحشو اللغوي
+- الواقعية: لا وعود كاذبة أو مبالغات
+- لا تستخدم الحركات (فتحة، ضمة، كسرة) نهائياً
 
-يجب أن تكون مخرجاتك بتنسيق JSON حصراً بالشكل التالي:
+## قيود النص الصارمة:
+- العنوان (headline): حد أقصى 5 كلمات
+- السطر الفرعي (subheadline): حد أقصى 6 كلمات  
+- النقاط (bullet_points): 3 نقاط كحد أقصى، كل نقطة لا تتجاوز 4 كلمات
+- CTA (cta_text): كلمتين أو 3 كحد أقصى
+- كل الكلمات يجب أن تكون حقيقية وموجودة في القاموس العربي/الدارجة
+
+## مخرجات بتنسيق JSON حصراً:
 {
-  "creative_idea": "وصف موجز للمشهد البصري المقترح وكيفية دمج المنتج في البيئة",
-  "headline": "عنوان قوي قصير بالدارجة الجزائرية",
-  "subheadline": "نص ثانوي مقنع",
+  "creative_idea": "وصف موجز للمشهد البصري",
+  "headline": "عنوان قوي قصير (5 كلمات كحد أقصى)",
+  "subheadline": "نص ثانوي مقنع (6 كلمات كحد أقصى)",
   "bullet_points": ["فائدة 1", "فائدة 2", "فائدة 3"],
-  "cta_text": "نص زر اتخاذ إجراء مثل: اشري ذرك، اطلب الآن",
-  "text_layout": "تحديد مكان وضع النصوص بناءً على نوع الصورة لضمان عدم تغطية المنتج"
+  "cta_text": "نص CTA (2-3 كلمات)",
+  "text_layout": "تحديد مكان النصوص"
 }
 
-تأكد أن:
-- العنوان يشد الانتباه في أقل من 3 ثوانٍ
-- اللهجة ليست فصحى وليست دارجة مبتذلة
-- التصميم يراعي المساحات الفارغة`;
+## أمثلة:
+منتج: حذاء رياضي → العنوان: "خفة وراحة في رجليك" / CTA: "اطلب الآن"
+منتج: عسل طبيعي → العنوان: "بنة الطبيعة الحقيقية" / CTA: "اكموندي ذرك"`;
 
     const userContent: any[] = [];
     
-    // Add images if provided
     if (imageUrls && imageUrls.length > 0) {
       for (const url of imageUrls) {
         if (url) {
@@ -68,7 +75,7 @@ serve(async (req) => {
 نوع الرسالة التسويقية: ${messageTypeMap[messageType] || messageType}
 المقاس: ${aspectRatioMap[aspectRatio] || aspectRatio}
 
-قم بتحليل صور المنتج (إن وجدت) والبيانات أعلاه، ثم أعطني مفهوم إعلاني احترافي كامل بتنسيق JSON.`
+تذكر: العنوان 5 كلمات كحد أقصى، CTA كلمتين أو 3. أعطني JSON فقط.`
     });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -105,11 +112,26 @@ serve(async (req) => {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "";
     
-    // Extract JSON from response
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON in response");
     
     const concept = JSON.parse(jsonMatch[0]);
+
+    // Enforce limits on output
+    if (concept.headline) {
+      concept.headline = concept.headline.split(/\s+/).slice(0, 5).join(' ');
+    }
+    if (concept.subheadline) {
+      concept.subheadline = concept.subheadline.split(/\s+/).slice(0, 6).join(' ');
+    }
+    if (concept.bullet_points) {
+      concept.bullet_points = concept.bullet_points.slice(0, 3).map((bp: string) => 
+        bp.split(/\s+/).slice(0, 4).join(' ')
+      );
+    }
+    if (concept.cta_text) {
+      concept.cta_text = concept.cta_text.split(/\s+/).slice(0, 3).join(' ');
+    }
 
     return new Response(JSON.stringify(concept), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
