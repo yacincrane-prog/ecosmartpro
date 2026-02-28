@@ -11,3 +11,12 @@ verify_jwt = false
 
 [functions.creative-image]
 verify_jwt = false
+
+[functions.landing-strategy]
+verify_jwt = false
+
+[functions.landing-structure]
+verify_jwt = false
+
+[functions.landing-image]
+verify_jwt = false
