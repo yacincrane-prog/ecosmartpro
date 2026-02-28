@@ -160,6 +160,110 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_projects: {
+        Row: {
+          created_at: string
+          desired_tone: string | null
+          id: string
+          market_country: string | null
+          price: string | null
+          product_description: string | null
+          product_images: string[] | null
+          product_name: string
+          status: string
+          strategy_output: Json | null
+          structure_output: Json | null
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          desired_tone?: string | null
+          id?: string
+          market_country?: string | null
+          price?: string | null
+          product_description?: string | null
+          product_images?: string[] | null
+          product_name: string
+          status?: string
+          strategy_output?: Json | null
+          structure_output?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          desired_tone?: string | null
+          id?: string
+          market_country?: string | null
+          price?: string | null
+          product_description?: string | null
+          product_images?: string[] | null
+          product_name?: string
+          status?: string
+          strategy_output?: Json | null
+          structure_output?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      landing_sections: {
+        Row: {
+          copy_direction: string | null
+          created_at: string
+          generated_copy: Json | null
+          goal: string | null
+          id: string
+          image_style: string | null
+          image_url: string | null
+          project_id: string
+          section_order: number
+          section_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          copy_direction?: string | null
+          created_at?: string
+          generated_copy?: Json | null
+          goal?: string | null
+          id?: string
+          image_style?: string | null
+          image_url?: string | null
+          project_id: string
+          section_order?: number
+          section_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          copy_direction?: string | null
+          created_at?: string
+          generated_copy?: Json | null
+          goal?: string | null
+          id?: string
+          image_style?: string | null
+          image_url?: string | null
+          project_id?: string
+          section_order?: number
+          section_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_sections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "landing_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_periods: {
         Row: {
           ad_spend_usd: number
