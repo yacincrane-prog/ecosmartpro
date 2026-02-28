@@ -68,7 +68,23 @@ serve(async (req) => {
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON in structure response");
 
-    const structure = JSON.parse(jsonMatch[0]);
+    let cleaned = jsonMatch[0]
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
+
+    let structure;
+    try {
+      structure = JSON.parse(cleaned);
+    } catch (_) {
+      cleaned = cleaned
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*]/g, "]")
+        .replace(/[\x00-\x1F\x7F]/g, "")
+        .replace(/"\s*\n\s*/g, '" ')
+        .replace(/([^\\])\\([^"\\\/bfnrtu])/g, '$1\\\\$2');
+      structure = JSON.parse(cleaned);
+    }
     return new Response(JSON.stringify(structure), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("landing-structure error:", e);
