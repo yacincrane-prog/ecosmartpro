@@ -374,7 +374,7 @@ export default function SyncedDataPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <ReadOnlyField label="سعر البيع" value={`${p.product.sale_price.toLocaleString()} د.ج`} />
                   <ReadOnlyField label="سعر الشراء" value={`${p.product.purchase_price.toLocaleString()} د.ج`} />
-                  <ReadOnlyField label="تخفيض التوصيل" value={`${p.product.delivery_discount.toLocaleString()} د.ج`} />
+                  <ReadOnlyField label="تخفيض التوصيل/طلب" value={`${(product.total_delivered > 0 ? product.delivery_discount / product.total_delivered : 0).toFixed(0)} د.ج`} />
                   <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
                 </div>
 
