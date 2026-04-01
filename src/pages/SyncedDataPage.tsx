@@ -413,7 +413,8 @@ export default function SyncedDataPage() {
                 <CostBreakdown stat={p} />
 
                 {/* Results */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Results + New Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className={`p-3 rounded-lg border ${p.revenue > 0 ? 'border-border' : 'border-border/50'}`}>
                     <p className="text-xs text-muted-foreground">الإيرادات</p>
                     <p className="text-lg font-bold">{p.revenue.toLocaleString('ar-DZ')} <span className="text-xs font-normal text-muted-foreground">د.ج</span></p>
@@ -422,11 +423,31 @@ export default function SyncedDataPage() {
                     <p className="text-xs text-muted-foreground">نسبة التوصيل</p>
                     <p className={`text-lg font-bold ${p.deliveryRate >= 60 ? 'text-profit' : 'text-loss'}`}>{p.deliveryRate.toFixed(1)}%</p>
                   </div>
-                  <div className={`p-3 rounded-lg border ${p.profit >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                  <div className={`p-3 rounded-lg border ${p.profit >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'} col-span-2 sm:col-span-1`}>
                     <p className="text-xs text-muted-foreground">الربح الصافي</p>
                     <p className={`text-lg font-bold ${p.profit >= 0 ? 'text-profit' : 'text-loss'}`}>{p.profit.toLocaleString('ar-DZ')} <span className="text-xs font-normal text-muted-foreground">د.ج</span></p>
                   </div>
+                  <div className="p-3 rounded-lg border border-border/50">
+                    <p className="text-xs text-muted-foreground">هامش الربح</p>
+                    <p className={`text-lg font-bold ${p.revenue > 0 && (p.profit / p.revenue) * 100 >= 0 ? 'text-profit' : 'text-loss'}`}>
+                      {p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : '0'}%
+                    </p>
+                  </div>
                 </div>
+                {p.delivered > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg border border-border/50">
+                      <p className="text-xs text-muted-foreground">تكلفة الطلب المسلّم</p>
+                      <p className="text-sm font-bold">{(p.totalCost / p.delivered).toFixed(0)} د.ج</p>
+                    </div>
+                    {p.adSpendDZD > 0 && (
+                      <div className="p-3 rounded-lg border border-border/50">
+                        <p className="text-xs text-muted-foreground">تكلفة الاكتساب</p>
+                        <p className="text-sm font-bold">{(p.adSpendDZD / p.delivered).toFixed(0)} د.ج</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CollapsibleContent>
             </div>
           </Collapsible>
