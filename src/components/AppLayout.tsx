@@ -10,6 +10,7 @@ const navItems = [
   { path: '/add', label: 'إضافة منتج', icon: PlusCircle },
   { path: '/archive', label: 'الأرشيف', icon: Archive },
   { path: '/testing-lab', label: 'مختبر المنتجات', icon: FlaskConical },
+  { path: '/synced-data', label: 'بيانات EcoSmart', icon: RefreshCw },
   { path: '/settings', label: 'الإعدادات', icon: Settings },
 ];
 

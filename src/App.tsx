@@ -46,6 +46,7 @@ function ProtectedRoutes() {
         <Route path="/product/:id/analysis" element={<ProductAnalysisPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/testing-lab" element={<TestingLab />} />
+        <Route path="/synced-data" element={<SyncedDataPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
