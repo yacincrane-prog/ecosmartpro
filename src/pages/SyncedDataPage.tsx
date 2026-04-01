@@ -1,47 +1,101 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useSyncStore } from '@/store/useSyncStore';
+import { useSyncStore, SyncedProduct } from '@/store/useSyncStore';
 import { useAppStore } from '@/store/useAppStore';
-import { Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off, RefreshCcw, Calendar } from 'lucide-react';
+import { 
+  Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off, 
+  Calendar, ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertCircle,
+  DollarSign, Package, Truck, RotateCcw, Phone, Settings2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
 
+type Decision = 'scale' | 'risk' | 'kill';
+
+function getDecision(profit: number, deliveryRate: number): Decision {
+  if (profit < 0 || deliveryRate < 40) return 'kill';
+  if (profit > 0 && deliveryRate >= 60) return 'scale';
+  return 'risk';
+}
+
+const decisionConfig = {
+  scale: { label: '🔥 Scale', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30', border: 'border-r-emerald-500', bg: '' },
+  risk: { label: '⚠️ Risk', color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', border: 'border-r-yellow-500', bg: '' },
+  kill: { label: '❌ Kill', color: 'bg-red-500/20 text-red-400 border-red-500/30', border: 'border-r-red-500', bg: 'bg-red-500/5' },
+};
+
+interface ProductStat {
+  product: SyncedProduct;
+  created: number;
+  confirmed: number;
+  delivered: number;
+  returned: number;
+  confirmationRate: number;
+  deliveryRate: number;
+  revenue: number;
+  profit: number;
+  totalCost: number;
+  adSpendDZD: number;
+  purchaseCost: number;
+  deliveryCost: number;
+  returnCost: number;
+  confirmationCost: number;
+  operationCost: number;
+  packagingTotal: number;
+  decision: Decision;
+}
+
 export default function SyncedDataPage() {
-  const { products, dailyStats, loading, fetchAllSyncedData } = useSyncStore();
+  const { products, dailyStats, manualInputs, loading, fetchAllSyncedData, saveManualInput } = useSyncStore();
   const { settings } = useAppStore();
   const navigate = useNavigate();
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
-
-  // Manual inputs per product (ad spend, packaging)
-  const [manualInputs, setManualInputs] = useState<Record<string, { adSpend: number; packagingCost: number }>>({});
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchAllSyncedData();
   }, []);
+
+  const toggleCard = (id: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const lastSync = useMemo(() => {
     if (products.length === 0) return null;
     return products.reduce((latest, p) => p.synced_at > latest ? p.synced_at : latest, products[0].synced_at);
   }, [products]);
 
-  // Filter products
   const displayProducts = useMemo(() => {
     if (selectedProduct === 'all') return products;
     return products.filter(p => p.name === selectedProduct);
   }, [products, selectedProduct]);
 
-  // Calculate stats per product (from daily_stats if date range, otherwise from totals)
-  const productStats = useMemo(() => {
+  // Date presets
+  const setPreset = (days: number) => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+    setDateFrom(from.toISOString().split('T')[0]);
+    setDateTo(to.toISOString().split('T')[0]);
+  };
+
+  const productStats: ProductStat[] = useMemo(() => {
     return displayProducts.map(product => {
       let created: number, confirmed: number, delivered: number, returned: number;
 
       if (dateFrom && dateTo) {
-        // Sum daily stats within date range
         const filtered = dailyStats.filter(s =>
           s.product_name === product.name &&
           s.stat_date >= dateFrom &&
@@ -66,7 +120,6 @@ export default function SyncedDataPage() {
 
       const revenue = delivered * product.sale_price;
       const purchaseCost = delivered * product.purchase_price;
-      // delivery_discount from EcoSmart is total for all orders, use directly
       const deliveryCost = product.delivery_discount;
       const returnCost = returned * settings.returnCost;
       const confirmationCost = confirmed * settings.confirmationCost;
@@ -75,24 +128,20 @@ export default function SyncedDataPage() {
       const totalCost = purchaseCost + deliveryCost + returnCost + adSpendDZD + confirmationCost + operationCost + packagingTotal;
       const profit = revenue - totalCost;
 
+      const decision = getDecision(profit, deliveryRate);
+
       return {
-        ...product,
-        created,
-        confirmed,
-        delivered,
-        returned,
-        confirmationRate,
-        deliveryRate,
-        revenue,
-        profit,
-        totalCost,
-        adSpendDZD,
-        manual,
+        product,
+        created, confirmed, delivered, returned,
+        confirmationRate, deliveryRate,
+        revenue, profit, totalCost,
+        adSpendDZD, purchaseCost, deliveryCost, returnCost,
+        confirmationCost, operationCost, packagingTotal,
+        decision,
       };
     });
   }, [displayProducts, dailyStats, dateFrom, dateTo, manualInputs, settings]);
 
-  // Totals
   const totals = useMemo(() => {
     return productStats.reduce(
       (acc, p) => ({
@@ -110,12 +159,21 @@ export default function SyncedDataPage() {
   const totalConfirmationRate = totals.created > 0 ? (totals.confirmed / totals.created) * 100 : 0;
   const totalDeliveryRate = (totals.delivered + totals.returned) > 0 ? (totals.delivered / (totals.delivered + totals.returned)) * 100 : 0;
 
-  const updateManualInput = (productName: string, field: 'adSpend' | 'packagingCost', value: number) => {
-    setManualInputs(prev => ({
-      ...prev,
-      [productName]: { ...(prev[productName] || { adSpend: 0, packagingCost: 0 }), [field]: value },
-    }));
-  };
+  // Smart summary
+  const summary = useMemo(() => {
+    const winning = productStats.filter(p => p.decision === 'scale').length;
+    const risky = productStats.filter(p => p.decision === 'risk').length;
+    const losing = productStats.filter(p => p.decision === 'kill').length;
+    const worstProduct = productStats.reduce((worst, p) => (!worst || p.profit < worst.profit) ? p : worst, null as ProductStat | null);
+    
+    let text = `لديك ${winning} منتج رابح`;
+    if (risky > 0) text += ` و ${risky} بحاجة مراجعة`;
+    if (losing > 0) text += ` و ${losing} خاسر`;
+    if (worstProduct && worstProduct.profit < 0) {
+      text += `. أكبر خسارة: ${worstProduct.product.name}`;
+    }
+    return text;
+  }, [productStats]);
 
   if (loading) {
     return (
@@ -141,7 +199,7 @@ export default function SyncedDataPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Sync banner */}
       <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
         <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
@@ -153,11 +211,50 @@ export default function SyncedDataPage() {
         </Button>
       </div>
 
-      {/* Date Range Filter */}
+      {/* Smart Summary */}
+      {productStats.length > 1 && (
+        <div className="p-3 rounded-lg bg-accent/50 border border-border text-sm text-foreground">
+          <span className="font-semibold">📊 ملخص:</span> {summary}
+        </div>
+      )}
+
+      {/* Date Range + Presets */}
       <div className="stat-card">
         <div className="flex items-center gap-2 mb-3">
           <Calendar className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">فترة زمنية (اختياري)</h3>
+          <h3 className="text-sm font-semibold">فترة زمنية</h3>
+        </div>
+        {/* Quick presets */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          {[
+            { label: 'آخر 7 أيام', days: 7 },
+            { label: 'آخر 30 يوم', days: 30 },
+            { label: 'هذا الشهر', days: 0 },
+          ].map(preset => (
+            <Button
+              key={preset.label}
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => {
+                if (preset.days === 0) {
+                  const now = new Date();
+                  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+                  setDateFrom(firstDay.toISOString().split('T')[0]);
+                  setDateTo(now.toISOString().split('T')[0]);
+                } else {
+                  setPreset(preset.days);
+                }
+              }}
+            >
+              {preset.label}
+            </Button>
+          ))}
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => { setDateFrom(''); setDateTo(''); }}>
+              إعادة تعيين
+            </Button>
+          )}
         </div>
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[140px]">
@@ -181,11 +278,6 @@ export default function SyncedDataPage() {
               ))}
             </select>
           </div>
-          {(dateFrom || dateTo) && (
-            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); }}>
-              <RefreshCcw className="h-3.5 w-3.5 ml-1" /> إعادة تعيين
-            </Button>
-          )}
         </div>
         {dateFrom && dateTo && (
           <p className="text-xs text-muted-foreground mt-2">
@@ -194,16 +286,33 @@ export default function SyncedDataPage() {
         )}
       </div>
 
-      {/* KPI Totals */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="الطلبات المنشأة" value={totals.created} />
-        <StatCard label="المؤكدة" value={totals.confirmed} />
-        <StatCard label="المسلمة" value={totals.delivered} variant="profit" />
-        <StatCard label="المرتجعة" value={totals.returned} variant="loss" />
-        <StatCard label="نسبة التأكيد" value={totalConfirmationRate} suffix="%" variant={totalConfirmationRate >= 50 ? 'profit' : 'warning'} />
-        <StatCard label="نسبة التوصيل" value={totalDeliveryRate} suffix="%" variant={totalDeliveryRate >= 60 ? 'profit' : 'loss'} />
-        <StatCard label="الإيرادات" value={totals.revenue} suffix="د.ج" />
-        <StatCard label="الربح الصافي" value={totals.profit} suffix="د.ج" variant={totals.profit >= 0 ? 'profit' : 'loss'} />
+      {/* KPI Totals - Two groups */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-muted-foreground">الأداء</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="الطلبات المنشأة" value={totals.created} />
+          <StatCard label="المؤكدة" value={totals.confirmed} />
+          <StatCard label="المسلمة" value={totals.delivered} variant="profit" />
+          <StatCard label="المرتجعة" value={totals.returned} variant="loss" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <StatCard label="نسبة التأكيد" value={totalConfirmationRate} suffix="%" variant={totalConfirmationRate >= 50 ? 'profit' : 'warning'} />
+          <StatCard label="نسبة التوصيل" value={totalDeliveryRate} suffix="%" variant={totalDeliveryRate >= 60 ? 'profit' : 'loss'} />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold text-muted-foreground">المال</h3>
+        <div className="grid grid-cols-2 gap-3">
+          <StatCard label="الإيرادات" value={totals.revenue} suffix="د.ج" />
+          <StatCard
+            label="الربح الصافي"
+            value={totals.profit}
+            suffix="د.ج"
+            variant={totals.profit >= 0 ? 'profit' : 'loss'}
+            className="col-span-1"
+          />
+        </div>
       </div>
 
       {/* Alerts */}
@@ -213,61 +322,107 @@ export default function SyncedDataPage() {
         </div>
       )}
 
-      {/* Product Cards */}
+      {/* Product Cards - Collapsible */}
       <h3 className="text-lg font-bold">تفاصيل المنتجات</h3>
-      {productStats.map(p => (
-        <div key={p.id} className="stat-card space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-base">{p.name}</h4>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <RefreshCw className="h-3 w-3" /> مزامنة تلقائية
-            </div>
-          </div>
+      {productStats.map(p => {
+        const config = decisionConfig[p.decision];
+        const isOpen = expandedCards.has(p.product.id);
+        const manual = manualInputs[p.product.name] || { adSpend: 0, packagingCost: 0 };
 
-          {/* Synced fields (read-only) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <ReadOnlyField label="سعر البيع" value={`${p.sale_price.toLocaleString()} د.ج`} />
-            <ReadOnlyField label="سعر الشراء" value={`${p.purchase_price.toLocaleString()} د.ج`} />
-            <ReadOnlyField label="تخفيض التوصيل" value={`${p.delivery_discount.toLocaleString()} د.ج`} />
-            <ReadOnlyField label="الطلبات المنشأة" value={p.created} />
-            <ReadOnlyField label="المؤكدة" value={p.confirmed} />
-            <ReadOnlyField label="المسلمة" value={p.delivered} />
-            <ReadOnlyField label="المرتجعة" value={p.returned} />
-            <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
-          </div>
+        return (
+          <Collapsible key={p.product.id} open={isOpen} onOpenChange={() => toggleCard(p.product.id)}>
+            <div className={`stat-card border-r-4 ${config.border} ${config.bg} space-y-0`}>
+              {/* Header - always visible */}
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <h4 className="font-semibold text-base truncate">{p.product.name}</h4>
+                    <Badge variant="outline" className={`text-xs shrink-0 ${config.color}`}>
+                      {config.label}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-left">
+                      <p className="text-xs text-muted-foreground">الربح</p>
+                      <p className={`text-sm font-bold ${p.profit >= 0 ? 'text-profit' : 'text-loss'}`}>
+                        {p.profit.toLocaleString('ar-DZ')} د.ج
+                      </p>
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs text-muted-foreground">التوصيل</p>
+                      <p className={`text-sm font-bold ${p.deliveryRate >= 60 ? 'text-profit' : 'text-loss'}`}>
+                        {p.deliveryRate.toFixed(1)}%
+                      </p>
+                    </div>
+                    {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                  </div>
+                </div>
+              </CollapsibleTrigger>
 
-          {/* Manual inputs */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">مصاريف الإعلانات ($)</Label>
-              <Input
-                type="number"
-                value={p.manual.adSpend || ''}
-                onChange={e => updateManualInput(p.name, 'adSpend', Number(e.target.value) || 0)}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">تكلفة التغليف / طلب (د.ج)</Label>
-              <Input
-                type="number"
-                value={p.manual.packagingCost || ''}
-                onChange={e => updateManualInput(p.name, 'packagingCost', Number(e.target.value) || 0)}
-                placeholder="0"
-                className="input-field"
-              />
-            </div>
-          </div>
+              {/* Expanded content */}
+              <CollapsibleContent className="pt-4 space-y-4">
+                {/* Synced stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <ReadOnlyField label="سعر البيع" value={`${p.product.sale_price.toLocaleString()} د.ج`} />
+                  <ReadOnlyField label="سعر الشراء" value={`${p.product.purchase_price.toLocaleString()} د.ج`} />
+                  <ReadOnlyField label="تخفيض التوصيل" value={`${p.product.delivery_discount.toLocaleString()} د.ج`} />
+                  <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
+                </div>
 
-          {/* Results */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <StatCard label="الإيرادات" value={p.revenue} suffix="د.ج" />
-            <StatCard label="نسبة التوصيل" value={p.deliveryRate} suffix="%" variant={p.deliveryRate >= 60 ? 'profit' : 'loss'} />
-            <StatCard label="الربح الصافي" value={p.profit} suffix="د.ج" variant={p.profit >= 0 ? 'profit' : 'loss'} />
-          </div>
-        </div>
-      ))}
+                <div className="grid grid-cols-4 gap-3">
+                  <ReadOnlyField label="المنشأة" value={p.created} />
+                  <ReadOnlyField label="المؤكدة" value={p.confirmed} />
+                  <ReadOnlyField label="المسلمة" value={p.delivered} />
+                  <ReadOnlyField label="المرتجعة" value={p.returned} />
+                </div>
+
+                {/* Manual inputs */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">مصاريف الإعلانات ($)</Label>
+                    <Input
+                      type="number"
+                      value={manual.adSpend || ''}
+                      onChange={e => saveManualInput(p.product.name, 'adSpend', Number(e.target.value) || 0)}
+                      placeholder="0"
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-1 block">تكلفة التغليف / طلب (د.ج)</Label>
+                    <Input
+                      type="number"
+                      value={manual.packagingCost || ''}
+                      onChange={e => saveManualInput(p.product.name, 'packagingCost', Number(e.target.value) || 0)}
+                      placeholder="0"
+                      className="input-field"
+                    />
+                  </div>
+                </div>
+
+                {/* Cost breakdown */}
+                <CostBreakdown stat={p} />
+
+                {/* Results */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className={`p-3 rounded-lg border ${p.revenue > 0 ? 'border-border' : 'border-border/50'}`}>
+                    <p className="text-xs text-muted-foreground">الإيرادات</p>
+                    <p className="text-lg font-bold">{p.revenue.toLocaleString('ar-DZ')} <span className="text-xs font-normal text-muted-foreground">د.ج</span></p>
+                  </div>
+                  <div className={`p-3 rounded-lg border ${p.deliveryRate >= 60 ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+                    <p className="text-xs text-muted-foreground">نسبة التوصيل</p>
+                    <p className={`text-lg font-bold ${p.deliveryRate >= 60 ? 'text-profit' : 'text-loss'}`}>{p.deliveryRate.toFixed(1)}%</p>
+                  </div>
+                  <div className={`p-3 rounded-lg border ${p.profit >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                    <p className="text-xs text-muted-foreground">الربح الصافي</p>
+                    <p className={`text-lg font-bold ${p.profit >= 0 ? 'text-profit' : 'text-loss'}`}>{p.profit.toLocaleString('ar-DZ')} <span className="text-xs font-normal text-muted-foreground">د.ج</span></p>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </div>
+          </Collapsible>
+        );
+      })}
     </div>
   );
 }
@@ -275,10 +430,40 @@ export default function SyncedDataPage() {
 function ReadOnlyField({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="p-2 rounded-lg bg-muted/30 border border-border/50">
-      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-        <RefreshCw className="h-2.5 w-2.5" /> {label}
-      </p>
-      <p className="text-sm font-semibold mt-0.5">{value}</p>
+      <p className="text-[10px] text-muted-foreground">{label}</p>
+      <p className="text-sm font-semibold mt-0.5">{typeof value === 'number' ? value.toLocaleString() : value}</p>
+    </div>
+  );
+}
+
+function CostBreakdown({ stat }: { stat: ProductStat }) {
+  const costs = [
+    { label: 'الشراء', value: stat.purchaseCost, icon: <Package className="h-3 w-3" /> },
+    { label: 'التوصيل', value: stat.deliveryCost, icon: <Truck className="h-3 w-3" /> },
+    { label: 'المرتجعات', value: stat.returnCost, icon: <RotateCcw className="h-3 w-3" /> },
+    { label: 'التأكيد', value: stat.confirmationCost, icon: <Phone className="h-3 w-3" /> },
+    { label: 'العمليات', value: stat.operationCost, icon: <Settings2 className="h-3 w-3" /> },
+    { label: 'الإعلانات', value: stat.adSpendDZD, icon: <DollarSign className="h-3 w-3" /> },
+    { label: 'التغليف', value: stat.packagingTotal, icon: <Package className="h-3 w-3" /> },
+  ].filter(c => c.value > 0);
+
+  if (costs.length === 0 || stat.revenue === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold text-muted-foreground">تفصيل التكاليف</p>
+      {costs.map(cost => {
+        const pct = (cost.value / stat.revenue) * 100;
+        return (
+          <div key={cost.label} className="flex items-center gap-2 text-xs">
+            <span className="text-muted-foreground">{cost.icon}</span>
+            <span className="w-16 text-muted-foreground">{cost.label}</span>
+            <Progress value={Math.min(pct, 100)} className="flex-1 h-1.5" />
+            <span className="w-20 text-left font-medium">{cost.value.toLocaleString('ar-DZ')} د.ج</span>
+            <span className="w-10 text-left text-muted-foreground">{pct.toFixed(0)}%</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
