@@ -163,4 +163,19 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     ]);
     set({ loading: false });
   },
+
+  deleteSyncedProduct: async (productName: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await Promise.all([
+      supabase.from('synced_products').delete().eq('user_id', user.id).eq('name', productName),
+      supabase.from('synced_daily_stats').delete().eq('user_id', user.id).eq('product_name', productName),
+      supabase.from('synced_product_inputs' as any).delete().eq('user_id', user.id).eq('product_name', productName),
+    ]);
+    set(state => ({
+      products: state.products.filter(p => p.name !== productName),
+      dailyStats: state.dailyStats.filter(s => s.product_name !== productName),
+      manualInputs: Object.fromEntries(Object.entries(state.manualInputs).filter(([k]) => k !== productName)),
+    }));
+  },
 }));
