@@ -54,7 +54,7 @@ interface SyncState {
   fetchSyncedProducts: () => Promise<void>;
   fetchSyncedDailyStats: () => Promise<void>;
   fetchManualInputs: () => Promise<void>;
-  saveManualInput: (productName: string, field: 'adSpend' | 'packagingCost', value: number) => Promise<void>;
+  saveManualInput: (productName: string, field: keyof ProductManualInputs, value: number | null) => Promise<void>;
   fetchAllSyncedData: () => Promise<void>;
 }
 
