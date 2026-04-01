@@ -499,6 +499,50 @@ export default function SyncedDataPage() {
   );
 }
 
+interface EditableFieldProps {
+  label: string;
+  value: number;
+  syncedValue: number;
+  isOverridden: boolean;
+  isMissing: boolean;
+  onChange: (value: number) => void;
+  onReset: () => void;
+}
+
+function EditableField({ label, value, syncedValue, isOverridden, isMissing, onChange, onReset }: EditableFieldProps) {
+  const borderClass = isMissing
+    ? 'border-yellow-500/50 bg-yellow-500/5'
+    : isOverridden
+      ? 'border-blue-500/50 bg-blue-500/5'
+      : 'border-border/50 bg-muted/30';
+
+  return (
+    <div className={`p-2 rounded-lg border ${borderClass} relative`}>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] text-muted-foreground">{label}</p>
+        {isOverridden && (
+          <button onClick={onReset} className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5" title="إعادة تعيين للقيمة المزامنة">
+            <RotateCw className="h-2.5 w-2.5" />
+          </button>
+        )}
+        {isMissing && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
+      </div>
+      <Input
+        type="number"
+        value={value || ''}
+        onChange={e => onChange(Number(e.target.value) || 0)}
+        placeholder={isMissing ? 'أدخل القيمة' : String(syncedValue)}
+        className="h-7 text-sm font-semibold border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+      />
+      {isOverridden && (
+        <p className="text-[9px] text-blue-400 mt-0.5 flex items-center gap-0.5">
+          <Pencil className="h-2 w-2" /> معدّل يدوياً (الأصل: {syncedValue.toLocaleString()})
+        </p>
+      )}
+    </div>
+  );
+}
+
 function ReadOnlyField({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="p-2 rounded-lg bg-muted/30 border border-border/50">
