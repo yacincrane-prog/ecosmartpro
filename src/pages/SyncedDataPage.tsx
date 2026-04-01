@@ -70,7 +70,7 @@ export default function SyncedDataPage() {
       const deliveryCost = product.delivery_discount;
       const returnCost = returned * settings.returnCost;
       const confirmationCost = confirmed * settings.confirmationCost;
-      const operationCost = confirmed * settings.operationCostPerOrder;
+      const operationCost = delivered * settings.operationCostPerOrder;
       const packagingTotal = delivered * manual.packagingCost;
       const totalCost = purchaseCost + deliveryCost + returnCost + adSpendDZD + confirmationCost + operationCost + packagingTotal;
       const profit = revenue - totalCost;
