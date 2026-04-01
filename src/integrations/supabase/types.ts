@@ -377,116 +377,80 @@ export type Database = {
         }
         Relationships: []
       }
-      synced_delivery_prices: {
+      synced_daily_stats: {
         Row: {
-          home_price: number
+          confirmed: number
+          created: number
+          delivered: number
           id: string
-          office_price: number
+          product_name: string
+          returned: number
+          stat_date: string
           synced_at: string
           user_id: string
-          wilaya_name: string
         }
         Insert: {
-          home_price?: number
+          confirmed?: number
+          created?: number
+          delivered?: number
           id?: string
-          office_price?: number
+          product_name: string
+          returned?: number
+          stat_date: string
           synced_at?: string
           user_id: string
-          wilaya_name: string
         }
         Update: {
-          home_price?: number
+          confirmed?: number
+          created?: number
+          delivered?: number
           id?: string
-          office_price?: number
-          synced_at?: string
-          user_id?: string
-          wilaya_name?: string
-        }
-        Relationships: []
-      }
-      synced_orders: {
-        Row: {
-          amount: number
-          commune: string
-          delivery_provider: string
-          delivery_type: string
-          discount: number
-          id: string
-          order_created_at: string
-          price: number
-          product_name: string
-          product_variant: string
-          quantity: number
-          status: string
-          synced_at: string
-          user_id: string
-          wilaya: string
-        }
-        Insert: {
-          amount?: number
-          commune?: string
-          delivery_provider?: string
-          delivery_type?: string
-          discount?: number
-          id?: string
-          order_created_at?: string
-          price?: number
-          product_name: string
-          product_variant?: string
-          quantity?: number
-          status: string
-          synced_at?: string
-          user_id: string
-          wilaya?: string
-        }
-        Update: {
-          amount?: number
-          commune?: string
-          delivery_provider?: string
-          delivery_type?: string
-          discount?: number
-          id?: string
-          order_created_at?: string
-          price?: number
           product_name?: string
-          product_variant?: string
-          quantity?: number
-          status?: string
+          returned?: number
+          stat_date?: string
           synced_at?: string
           user_id?: string
-          wilaya?: string
         }
         Relationships: []
       }
       synced_products: {
         Row: {
-          alias_name: string
+          delivery_discount: number
           id: string
           name: string
           purchase_price: number
-          qty: number
           sale_price: number
           synced_at: string
+          total_confirmed: number
+          total_created: number
+          total_delivered: number
+          total_returned: number
           user_id: string
         }
         Insert: {
-          alias_name?: string
+          delivery_discount?: number
           id?: string
           name: string
           purchase_price?: number
-          qty?: number
           sale_price?: number
           synced_at?: string
+          total_confirmed?: number
+          total_created?: number
+          total_delivered?: number
+          total_returned?: number
           user_id: string
         }
         Update: {
-          alias_name?: string
+          delivery_discount?: number
           id?: string
           name?: string
           purchase_price?: number
-          qty?: number
           sale_price?: number
           synced_at?: string
+          total_confirmed?: number
+          total_created?: number
+          total_delivered?: number
+          total_returned?: number
           user_id?: string
         }
         Relationships: []
