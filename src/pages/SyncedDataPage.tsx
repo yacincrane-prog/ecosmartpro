@@ -4,7 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { 
   Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off, 
   Calendar, ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertCircle,
-  DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save
+  DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save, Trash2, ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
 
@@ -50,8 +51,10 @@ interface ProductStat {
   decision: Decision;
 }
 
+type SortOption = 'default' | 'profit-desc' | 'profit-asc' | 'delivery-desc';
+
 export default function SyncedDataPage() {
-  const { products, dailyStats, manualInputs, loading, fetchAllSyncedData, saveManualInput } = useSyncStore();
+  const { products, dailyStats, manualInputs, loading, fetchAllSyncedData, saveManualInput, deleteSyncedProduct } = useSyncStore();
   const { settings } = useAppStore();
   const navigate = useNavigate();
 
@@ -59,6 +62,7 @@ export default function SyncedDataPage() {
   const [dateTo, setDateTo] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<SortOption>('default');
 
   useEffect(() => {
     fetchAllSyncedData();
@@ -82,7 +86,6 @@ export default function SyncedDataPage() {
     return products.filter(p => p.name === selectedProduct);
   }, [products, selectedProduct]);
 
-  // Date presets
   const setPreset = (days: number) => {
     const to = new Date();
     const from = new Date();
@@ -92,7 +95,7 @@ export default function SyncedDataPage() {
   };
 
   const productStats: ProductStat[] = useMemo(() => {
-    return displayProducts.map(product => {
+    const stats = displayProducts.map(product => {
       let created: number, confirmed: number, delivered: number, returned: number;
 
       if (dateFrom && dateTo) {
@@ -118,7 +121,6 @@ export default function SyncedDataPage() {
       const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
       const adSpendDZD = manual.adSpend * settings.currencyRate;
 
-      // Use overrides if available
       const salePrice = manual.salePriceOverride ?? product.sale_price;
       const purchasePrice = manual.purchasePriceOverride ?? product.purchase_price;
       const discountTotal = manual.deliveryDiscountOverride != null 
@@ -150,7 +152,14 @@ export default function SyncedDataPage() {
         decision,
       };
     });
-  }, [displayProducts, dailyStats, dateFrom, dateTo, manualInputs, settings]);
+
+    // Sort
+    if (sortBy === 'profit-desc') stats.sort((a, b) => b.profit - a.profit);
+    else if (sortBy === 'profit-asc') stats.sort((a, b) => a.profit - b.profit);
+    else if (sortBy === 'delivery-desc') stats.sort((a, b) => b.deliveryRate - a.deliveryRate);
+
+    return stats;
+  }, [displayProducts, dailyStats, dateFrom, dateTo, manualInputs, settings, sortBy]);
 
   const totals = useMemo(() => {
     return productStats.reduce(
@@ -169,7 +178,7 @@ export default function SyncedDataPage() {
   const totalConfirmationRate = totals.created > 0 ? (totals.confirmed / totals.created) * 100 : 0;
   const totalDeliveryRate = (totals.delivered + totals.returned) > 0 ? (totals.delivered / (totals.delivered + totals.returned)) * 100 : 0;
 
-  // Smart summary
+  // Smart summary - always shown
   const summary = useMemo(() => {
     const winning = productStats.filter(p => p.decision === 'scale').length;
     const risky = productStats.filter(p => p.decision === 'risk').length;
@@ -208,6 +217,8 @@ export default function SyncedDataPage() {
     );
   }
 
+  const showGlobalKPIs = selectedProduct === 'all' && products.length > 1;
+
   return (
     <div className="space-y-5">
       {/* Sync banner */}
@@ -221,8 +232,8 @@ export default function SyncedDataPage() {
         </Button>
       </div>
 
-      {/* Smart Summary */}
-      {productStats.length > 1 && (
+      {/* Smart Summary - always visible */}
+      {productStats.length > 0 && (
         <div className="p-3 rounded-lg bg-accent/50 border border-border text-sm text-foreground">
           <span className="font-semibold">📊 ملخص:</span> {summary}
         </div>
@@ -234,7 +245,6 @@ export default function SyncedDataPage() {
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold">فترة زمنية</h3>
         </div>
-        {/* Quick presets */}
         <div className="flex flex-wrap gap-2 mb-3">
           {[
             { label: 'آخر 7 أيام', days: 7 },
@@ -302,34 +312,37 @@ export default function SyncedDataPage() {
         )}
       </div>
 
-      {/* KPI Totals - Two groups */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground">الأداء</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="الطلبات المنشأة" value={totals.created} />
-          <StatCard label="المؤكدة" value={totals.confirmed} />
-          <StatCard label="المسلمة" value={totals.delivered} variant="profit" />
-          <StatCard label="المرتجعة" value={totals.returned} variant="loss" />
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="نسبة التأكيد" value={totalConfirmationRate} suffix="%" variant={totalConfirmationRate >= 50 ? 'profit' : 'warning'} />
-          <StatCard label="نسبة التوصيل" value={totalDeliveryRate} suffix="%" variant={totalDeliveryRate >= 60 ? 'profit' : 'loss'} />
-        </div>
-      </div>
+      {/* KPI Totals - only when multiple products and 'all' selected */}
+      {showGlobalKPIs && (
+        <>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">الأداء</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCard label="الطلبات المنشأة" value={totals.created} />
+              <StatCard label="المؤكدة" value={totals.confirmed} />
+              <StatCard label="المسلمة" value={totals.delivered} variant="profit" />
+              <StatCard label="المرتجعة" value={totals.returned} variant="loss" />
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <StatCard label="نسبة التأكيد" value={totalConfirmationRate} suffix="%" variant={totalConfirmationRate >= 50 ? 'profit' : 'warning'} />
+              <StatCard label="نسبة التوصيل" value={totalDeliveryRate} suffix="%" variant={totalDeliveryRate >= 60 ? 'profit' : 'loss'} />
+            </div>
+          </div>
 
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-muted-foreground">المال</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard label="الإيرادات" value={totals.revenue} suffix="د.ج" />
-          <StatCard
-            label="الربح الصافي"
-            value={totals.profit}
-            suffix="د.ج"
-            variant={totals.profit >= 0 ? 'profit' : 'loss'}
-            className="col-span-1"
-          />
-        </div>
-      </div>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">المال</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="الإيرادات" value={totals.revenue} suffix="د.ج" />
+              <StatCard
+                label="الربح الصافي"
+                value={totals.profit}
+                suffix="د.ج"
+                variant={totals.profit >= 0 ? 'profit' : 'loss'}
+              />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Alerts */}
       {totals.profit < 0 && (
@@ -338,8 +351,21 @@ export default function SyncedDataPage() {
         </div>
       )}
 
-      {/* Product Cards - Collapsible */}
-      <h3 className="text-lg font-bold">تفاصيل المنتجات</h3>
+      {/* Product Cards Header + Sorting */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-bold">تفاصيل المنتجات</h3>
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value as SortOption)}
+          className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+        >
+          <option value="default">الأحدث</option>
+          <option value="profit-desc">الربح ↓</option>
+          <option value="profit-asc">الربح ↑</option>
+          <option value="delivery-desc">نسبة التوصيل ↓</option>
+        </select>
+      </div>
+
       {productStats.map(p => {
         const config = decisionConfig[p.decision];
         const isOpen = expandedCards.has(p.product.id);
@@ -356,29 +382,30 @@ export default function SyncedDataPage() {
         return (
           <Collapsible key={p.product.id} open={isOpen} onOpenChange={() => toggleCard(p.product.id)}>
             <div className={`stat-card border-r-4 ${config.border} ${config.bg} space-y-0`}>
-              {/* Header - always visible */}
+              {/* Header - 2 rows on mobile */}
               <CollapsibleTrigger className="w-full">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <h4 className="font-semibold text-base truncate">{p.product.name}</h4>
+                <div className="space-y-2">
+                  {/* Row 1: Name + Badge */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h4 className="font-semibold text-base truncate flex-1 text-right">{p.product.name}</h4>
                     <Badge variant="outline" className={`text-xs shrink-0 ${config.color}`}>
                       {config.label}
                     </Badge>
                   </div>
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="text-left">
-                      <p className="text-xs text-muted-foreground">الربح</p>
-                      <p className={`text-sm font-bold ${p.profit >= 0 ? 'text-profit' : 'text-loss'}`}>
+                  {/* Row 2: Profit + Delivery + Orders + Chevron */}
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-3">
+                      <span className={`font-bold ${p.profit >= 0 ? 'text-profit' : 'text-loss'}`}>
                         {p.profit.toLocaleString('ar-DZ')} د.ج
-                      </p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-xs text-muted-foreground">التوصيل</p>
-                      <p className={`text-sm font-bold ${p.deliveryRate >= 60 ? 'text-profit' : 'text-loss'}`}>
+                      </span>
+                      <span className={`font-bold ${p.deliveryRate >= 60 ? 'text-profit' : 'text-loss'}`}>
                         {p.deliveryRate.toFixed(1)}%
-                      </p>
+                      </span>
                     </div>
-                    {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                    <div className="flex items-center gap-3 text-muted-foreground">
+                      <span>{p.created}↗ {p.confirmed}✓ {p.delivered}📦 {p.returned}↩</span>
+                      {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </div>
                   </div>
                 </div>
               </CollapsibleTrigger>
@@ -416,14 +443,12 @@ export default function SyncedDataPage() {
                   />
                 </div>
 
-                {/* Read-only stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Read-only stats - merged into one grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
                   <ReadOnlyField label="المنشأة" value={p.created} />
                   <ReadOnlyField label="المؤكدة" value={p.confirmed} />
                   <ReadOnlyField label="المسلمة" value={p.delivered} />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
                   <ReadOnlyField label="المرتجعة" value={p.returned} />
                 </div>
 
@@ -454,7 +479,6 @@ export default function SyncedDataPage() {
                 {/* Cost breakdown */}
                 <CostBreakdown stat={p} />
 
-                {/* Results */}
                 {/* Results + New Metrics */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className={`p-3 rounded-lg border ${p.revenue > 0 ? 'border-border' : 'border-border/50'}`}>
@@ -490,6 +514,35 @@ export default function SyncedDataPage() {
                     )}
                   </div>
                 )}
+
+                {/* Delete button */}
+                <div className="pt-2 border-t border-border/30">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                        <Trash2 className="h-3.5 w-3.5 ml-1" />
+                        حذف المنتج
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>حذف {p.product.name}؟</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          سيتم حذف جميع بيانات هذا المنتج (الإحصائيات اليومية والإدخالات اليدوية). لا يمكن التراجع عن هذا الإجراء.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>إلغاء</AlertDialogCancel>
+                        <AlertDialogAction
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={() => deleteSyncedProduct(p.product.name)}
+                        >
+                          حذف
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </CollapsibleContent>
             </div>
           </Collapsible>
@@ -565,6 +618,8 @@ function CostBreakdown({ stat }: { stat: ProductStat }) {
 
   if (costs.length === 0 || stat.revenue === 0) return null;
 
+  const costPctOfRevenue = (stat.totalCost / stat.revenue) * 100;
+
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold text-muted-foreground">تفصيل التكاليف</p>
@@ -580,6 +635,14 @@ function CostBreakdown({ stat }: { stat: ProductStat }) {
           </div>
         );
       })}
+      {/* Total costs row */}
+      <div className="flex items-center gap-2 text-xs pt-1 border-t border-border/30">
+        <span className="w-[22px]" />
+        <span className="w-16 font-bold text-foreground">الإجمالي</span>
+        <div className="flex-1" />
+        <span className="w-20 text-left font-bold text-foreground">{stat.totalCost.toLocaleString('ar-DZ')} د.ج</span>
+        <span className={`w-10 text-left font-bold ${costPctOfRevenue > 100 ? 'text-loss' : 'text-muted-foreground'}`}>{costPctOfRevenue.toFixed(0)}%</span>
+      </div>
     </div>
   );
 }

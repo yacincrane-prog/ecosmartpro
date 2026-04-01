@@ -56,6 +56,7 @@ interface SyncState {
   fetchManualInputs: () => Promise<void>;
   saveManualInput: (productName: string, field: keyof ProductManualInputs, value: number | null) => Promise<void>;
   fetchAllSyncedData: () => Promise<void>;
+  deleteSyncedProduct: (productName: string) => Promise<void>;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
@@ -161,5 +162,20 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       get().fetchManualInputs(),
     ]);
     set({ loading: false });
+  },
+
+  deleteSyncedProduct: async (productName: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await Promise.all([
+      supabase.from('synced_products').delete().eq('user_id', user.id).eq('name', productName),
+      supabase.from('synced_daily_stats').delete().eq('user_id', user.id).eq('product_name', productName),
+      supabase.from('synced_product_inputs' as any).delete().eq('user_id', user.id).eq('product_name', productName),
+    ]);
+    set(state => ({
+      products: state.products.filter(p => p.name !== productName),
+      dailyStats: state.dailyStats.filter(s => s.product_name !== productName),
+      manualInputs: Object.fromEntries(Object.entries(state.manualInputs).filter(([k]) => k !== productName)),
+    }));
   },
 }));
