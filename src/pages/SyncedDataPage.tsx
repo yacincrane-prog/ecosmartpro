@@ -283,9 +283,15 @@ export default function SyncedDataPage() {
           </div>
         </div>
         {dateFrom && dateTo && (
-          <p className="text-xs text-muted-foreground mt-2">
-            الأرقام محسوبة من الإحصائيات اليومية ضمن الفترة المحددة
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-muted-foreground">
+              الأرقام محسوبة من الإحصائيات اليومية ضمن الفترة المحددة
+            </p>
+            <p className="text-xs text-yellow-500 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              مصاريف الإعلانات والتغليف تمثل القيمة الإجمالية وليست محسوبة حسب الفترة المحددة
+            </p>
+          </div>
         )}
       </div>
 
