@@ -56,6 +56,7 @@ interface SyncState {
   fetchManualInputs: () => Promise<void>;
   saveManualInput: (productName: string, field: keyof ProductManualInputs, value: number | null) => Promise<void>;
   fetchAllSyncedData: () => Promise<void>;
+  deleteSyncedProduct: (productName: string) => Promise<void>;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
