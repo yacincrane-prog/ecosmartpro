@@ -13,6 +13,7 @@ import ProductDetail from "@/pages/ProductDetail";
 import ProductAnalysisPage from "@/pages/ProductAnalysisPage";
 import ComparePage from "@/pages/ComparePage";
 import TestingLab from "@/pages/TestingLab";
+import SyncedDataPage from "@/pages/SyncedDataPage";
 import AuthPage from "@/pages/AuthPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
