@@ -66,7 +66,8 @@ export default function SyncedDataPage() {
 
       const revenue = delivered * product.sale_price;
       const purchaseCost = delivered * product.purchase_price;
-      const deliveryCost = delivered * product.delivery_discount;
+      // delivery_discount from EcoSmart is total for all orders, use directly
+      const deliveryCost = product.delivery_discount;
       const returnCost = returned * settings.returnCost;
       const confirmationCost = confirmed * settings.confirmationCost;
       const operationCost = confirmed * settings.operationCostPerOrder;
