@@ -1,18 +1,15 @@
 import { ReactNode, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Archive, Settings, BarChart3, LogOut, FlaskConical, Paintbrush, Rocket } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Archive, Settings, BarChart3, LogOut, FlaskConical } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from 'sonner';
-import AIChatButton from '@/components/AIChatButton';
 
 const navItems = [
   { path: '/', label: 'لوحة القيادة', icon: LayoutDashboard },
   { path: '/add', label: 'إضافة منتج', icon: PlusCircle },
   { path: '/archive', label: 'الأرشيف', icon: Archive },
   { path: '/testing-lab', label: 'مختبر المنتجات', icon: FlaskConical },
-  { path: '/creative-lab', label: 'مختبر الصور', icon: Paintbrush },
-  { path: '/landing-generator', label: 'صفحات الهبوط', icon: Rocket },
   { path: '/settings', label: 'الإعدادات', icon: Settings },
 ];
 
@@ -72,7 +69,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="container py-6 animate-fade-in">{children}</main>
-      <AIChatButton />
     </div>
   );
 }

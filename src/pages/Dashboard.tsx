@@ -5,7 +5,6 @@ import StatCard from '@/components/StatCard';
 import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useState } from 'react';
-import AIInsightsCard from '@/components/AIInsightsCard';
 
 export default function Dashboard() {
   const { products, settings, loading } = useAppStore();
@@ -155,18 +154,6 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
           </div>
-
-          {/* AI Insights */}
-          <AIInsightsCard contextData={{
-            totalNetProfit: totals.totalNetProfit,
-            avgNetProfitPerUnit: totals.avgNetProfitPerUnit,
-            overallDeliveryRate: totals.overallDeliveryRate,
-            overallConfirmationRate: totals.overallConfirmationRate,
-            overallReturnRate: totals.overallReturnRate,
-            productsCount: products.length,
-            products: products.map(p => ({ name: p.name, periodsCount: p.periods.length })),
-            analyses: analyses.map(a => ({ name: a.name, netProfit: a.netProfit, deliveryRate: a.deliveryToReceivedRate, returnRate: a.returnRate })),
-          }} />
 
           {/* Alerts */}
           {analyses.some(a => a.alerts.length > 0) && (

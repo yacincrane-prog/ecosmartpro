@@ -6,9 +6,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight, Bot } from 'lucide-react';
+import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
-import AIChatDrawer from '@/components/AIChatDrawer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,36 +30,6 @@ export default function Archive() {
   const [addingPeriodFor, setAddingPeriodFor] = useState<string | null>(null);
   const [editingPeriod, setEditingPeriod] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
-  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
-  const [aiContext, setAiContext] = useState<any>(null);
-  const [aiInitialMessage, setAiInitialMessage] = useState<string>('');
-
-  const handleAnalyzeWithAI = (product: any, analysis: any) => {
-    const contextData = {
-      product: {
-        name: product.name,
-        periods: product.periods,
-      },
-      analysis: {
-        netProfit: analysis.netProfit,
-        confirmationRate: analysis.confirmationRate,
-        deliveryToConfirmationRate: analysis.deliveryToConfirmationRate,
-        deliveryToReceivedRate: analysis.deliveryToReceivedRate,
-        returnRate: analysis.returnRate,
-        cpaConfirmed: analysis.cpaConfirmed,
-        cpaDelivered: analysis.cpaDelivered,
-        profitPerDelivered: analysis.profitPerDelivered,
-        totalRevenue: analysis.totalRevenue,
-        totalCosts: analysis.totalCosts,
-        adSpendDZD: analysis.adSpendDZD,
-        alerts: analysis.alerts,
-      },
-      settings,
-    };
-    setAiContext(contextData);
-    setAiInitialMessage(`حلل لي منتج "${product.name}" بالتفصيل وأعطني قرارك`);
-    setAiDrawerOpen(true);
-  };
 
   const productAnalyses = useMemo(() => {
     return products.map((product) => {
@@ -153,23 +122,20 @@ export default function Archive() {
                     {selectedPeriodId === 'all' ? `${product.periods.length} فترات` : `${analysis.dateFrom} → ${analysis.dateTo}`}
                   </span>
                 </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => handleAnalyzeWithAI(product, analysis)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="تحليل بالذكاء الاصطناعي">
-                      <Bot className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => setAddingPeriodFor(addingPeriodFor === product.id ? null : product.id)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="إضافة فترة جديدة">
-                      <PlusCircle className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => navigate(`/product/${product.id}/analysis`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="عرض التحاليل">
-                      <BarChart3 className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => navigate(`/product/${product.id}`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-all" title="تعديل">
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-loss transition-all" title="حذف">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setAddingPeriodFor(addingPeriodFor === product.id ? null : product.id)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="إضافة فترة جديدة">
+                    <PlusCircle className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => navigate(`/product/${product.id}/analysis`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-primary transition-all" title="عرض التحاليل">
+                    <BarChart3 className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => navigate(`/product/${product.id}`)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-all" title="تعديل">
+                    <Edit className="h-4 w-4" />
+                  </button>
+                  <button onClick={() => setDeleteConfirm({ id: product.id, name: product.name })} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-loss transition-all" title="حذف">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               {/* Period selector */}
@@ -300,13 +266,6 @@ export default function Archive() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <AIChatDrawer
-        open={aiDrawerOpen}
-        onOpenChange={(open) => { setAiDrawerOpen(open); if (!open) { setAiContext(null); setAiInitialMessage(''); } }}
-        initialContext={aiContext}
-        initialMessage={aiInitialMessage}
-      />
     </div>
   );
 }

@@ -10,8 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Trash2, RotateCcw, Image, Link, Video, DollarSign, FlaskConical, Star, X, ExternalLink, Upload, Loader2, Bot } from 'lucide-react';
-import AIChatDrawer from '@/components/AIChatDrawer';
+import { Plus, Trash2, RotateCcw, Image, Link, Video, DollarSign, FlaskConical, Star, X, ExternalLink, Upload, Loader2 } from 'lucide-react';
 
 export default function TestingLab() {
   const { products, loading, fetchTestProducts, addTestProduct, trashProduct, restoreProduct, deleteProductPermanently, addCompetitor, deleteCompetitor, saveScore } = useTestLabStore();
@@ -152,27 +151,6 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
   const [expanded, setExpanded] = useState(false);
   const totalScore = product.score ? calculateTotalScore(product.score) : null;
   const label = totalScore !== null ? getScoreLabelInfo(getScoreLabel(totalScore)) : null;
-  const [aiDrawerOpen, setAiDrawerOpen] = useState(false);
-
-  const productContext = {
-    productName: product.name,
-    description: product.description,
-    imageUrl: product.imageUrl || null,
-    competitors: product.competitors.map(c => ({ websiteUrl: c.websiteUrl, videoUrl: c.videoUrl, sellingPrice: c.sellingPrice })),
-    score: product.score ? {
-      solvesProblem: product.score.solvesProblem,
-      wowFactor: product.score.wowFactor,
-      hasVideos: product.score.hasVideos,
-      smallNoVariants: product.score.smallNoVariants,
-      sellingNow: product.score.sellingNow,
-      totalScore,
-      label: label?.text,
-    } : null,
-  };
-
-  const initialAIMessage = product.imageUrl 
-    ? `انظر لصورة هذا المنتج "${product.name}" وحلله بصرياً، ابحث عنه وأعطني معلومات ونصائح مختصرة حوله.`
-    : `حلل هذا المنتج باختصار: ${product.name}`;
 
   return (
     <Card className="glass-card overflow-hidden">
@@ -201,29 +179,6 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
 
       {expanded && (
         <CardContent className="space-y-6 border-t border-border/50 pt-4">
-          {/* AI Score Card */}
-          {totalScore !== null && label && (
-            <div className={`rounded-xl p-4 border ${totalScore >= 70 ? 'border-profit/30 bg-profit/5' : totalScore >= 45 ? 'border-warning/30 bg-warning/5' : 'border-destructive/30 bg-destructive/5'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-semibold flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-primary" />
-                  AI Product Score
-                </span>
-                <div className="text-right">
-                  <span className="text-3xl font-bold">{totalScore}</span>
-                  <span className="text-sm text-muted-foreground">/100</span>
-                </div>
-              </div>
-              <p className={`text-sm font-medium ${label.color}`}>{label.text}</p>
-            </div>
-          )}
-
-          {/* Discuss with AI */}
-          <Button variant="outline" className="w-full gap-2 border-primary/30 text-primary hover:bg-primary/10" onClick={() => setAiDrawerOpen(true)}>
-            <Bot className="h-4 w-4" />
-            ناقش هذا المنتج مع الذكاء الاصطناعي
-          </Button>
-
           {/* Competitors */}
           <CompetitorsSection product={product} onAdd={onAddCompetitor} onDelete={onDeleteCompetitor} />
 
@@ -231,16 +186,6 @@ function ProductCard({ product, onTrash, onAddCompetitor, onDeleteCompetitor, on
           <ScoringSection product={product} onSave={onSaveScore} />
         </CardContent>
       )}
-
-      <AIChatDrawer
-        open={aiDrawerOpen}
-        onOpenChange={setAiDrawerOpen}
-        initialContext={productContext}
-        initialMessage={initialAIMessage}
-        initialImageUrl={product.imageUrl || undefined}
-        contextType="product"
-        contextId={product.id}
-      />
     </Card>
   );
 }
@@ -318,8 +263,6 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
     smallNoVariants: product.score?.smallNoVariants ?? 0,
     sellingNow: product.score?.sellingNow ?? 0,
   }));
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiReasoning, setAiReasoning] = useState('');
 
   const tempScore = {
     id: '', testProductId: product.id,
@@ -327,40 +270,6 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
   };
   const total = calculateTotalScore(tempScore);
   const label = getScoreLabelInfo(getScoreLabel(total));
-
-  const handleAIScore = async () => {
-    setAiLoading(true);
-    setAiReasoning('');
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-auto-score', {
-        body: {
-          productName: product.name,
-          description: product.description,
-          imageUrl: product.imageUrl || null,
-          competitors: product.competitors.map(c => ({
-            websiteUrl: c.websiteUrl,
-            videoUrl: c.videoUrl,
-            sellingPrice: c.sellingPrice,
-          })),
-        },
-      });
-
-      if (error) throw error;
-      const result = data;
-      setScores({
-        solvesProblem: result.solvesProblem,
-        wowFactor: result.wowFactor,
-        hasVideos: result.hasVideos,
-        smallNoVariants: result.smallNoVariants,
-        sellingNow: result.sellingNow,
-      });
-      if (result.reasoning) setAiReasoning(result.reasoning);
-    } catch (e: any) {
-      console.error(e);
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   return (
     <div>
@@ -373,23 +282,6 @@ function ScoringSection({ product, onSave }: { product: TestProduct; onSave: (id
           <span className={`text-sm font-medium ${label.color}`}>{label.text}</span>
         </div>
       </div>
-
-      {/* AI Auto Score Button */}
-      <Button
-        variant="outline"
-        className="w-full mb-4 gap-2 border-primary/30 text-primary hover:bg-primary/10"
-        onClick={handleAIScore}
-        disabled={aiLoading}
-      >
-        {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bot className="h-4 w-4" />}
-        {aiLoading ? 'الذكاء الاصطناعي يحلل المنتج...' : 'تقييم تلقائي بالذكاء الاصطناعي'}
-      </Button>
-
-      {aiReasoning && (
-        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
-          <span className="font-medium text-primary">رأي الذكاء الاصطناعي:</span> {aiReasoning}
-        </div>
-      )}
 
       <div className="space-y-4">
         {SCORE_CRITERIA.map((c) => (
