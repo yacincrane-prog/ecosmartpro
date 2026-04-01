@@ -106,6 +106,36 @@ export type Database = {
           },
         ]
       }
+      api_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          last_used_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_used_at?: string | null
+          token?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_used_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       creative_generations: {
         Row: {
           aspect_ratio: string
@@ -343,6 +373,120 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      synced_delivery_prices: {
+        Row: {
+          home_price: number
+          id: string
+          office_price: number
+          synced_at: string
+          user_id: string
+          wilaya_name: string
+        }
+        Insert: {
+          home_price?: number
+          id?: string
+          office_price?: number
+          synced_at?: string
+          user_id: string
+          wilaya_name: string
+        }
+        Update: {
+          home_price?: number
+          id?: string
+          office_price?: number
+          synced_at?: string
+          user_id?: string
+          wilaya_name?: string
+        }
+        Relationships: []
+      }
+      synced_orders: {
+        Row: {
+          amount: number
+          commune: string
+          delivery_provider: string
+          delivery_type: string
+          discount: number
+          id: string
+          order_created_at: string
+          price: number
+          product_name: string
+          product_variant: string
+          quantity: number
+          status: string
+          synced_at: string
+          user_id: string
+          wilaya: string
+        }
+        Insert: {
+          amount?: number
+          commune?: string
+          delivery_provider?: string
+          delivery_type?: string
+          discount?: number
+          id?: string
+          order_created_at?: string
+          price?: number
+          product_name: string
+          product_variant?: string
+          quantity?: number
+          status: string
+          synced_at?: string
+          user_id: string
+          wilaya?: string
+        }
+        Update: {
+          amount?: number
+          commune?: string
+          delivery_provider?: string
+          delivery_type?: string
+          discount?: number
+          id?: string
+          order_created_at?: string
+          price?: number
+          product_name?: string
+          product_variant?: string
+          quantity?: number
+          status?: string
+          synced_at?: string
+          user_id?: string
+          wilaya?: string
+        }
+        Relationships: []
+      }
+      synced_products: {
+        Row: {
+          alias_name: string
+          id: string
+          name: string
+          purchase_price: number
+          qty: number
+          sale_price: number
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          alias_name?: string
+          id?: string
+          name: string
+          purchase_price?: number
+          qty?: number
+          sale_price?: number
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          alias_name?: string
+          id?: string
+          name?: string
+          purchase_price?: number
+          qty?: number
+          sale_price?: number
+          synced_at?: string
           user_id?: string
         }
         Relationships: []
