@@ -37,6 +37,9 @@ export interface SyncedDailyStat {
 export interface ProductManualInputs {
   adSpend: number;
   packagingCost: number;
+  salePriceOverride: number | null;
+  purchasePriceOverride: number | null;
+  deliveryDiscountOverride: number | null;
 }
 
 interface SyncState {
@@ -51,7 +54,7 @@ interface SyncState {
   fetchSyncedProducts: () => Promise<void>;
   fetchSyncedDailyStats: () => Promise<void>;
   fetchManualInputs: () => Promise<void>;
-  saveManualInput: (productName: string, field: 'adSpend' | 'packagingCost', value: number) => Promise<void>;
+  saveManualInput: (productName: string, field: keyof ProductManualInputs, value: number | null) => Promise<void>;
   fetchAllSyncedData: () => Promise<void>;
 }
 
@@ -116,22 +119,23 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         inputs[row.product_name] = {
           adSpend: Number(row.ad_spend),
           packagingCost: Number(row.packaging_cost),
+          salePriceOverride: row.sale_price_override != null ? Number(row.sale_price_override) : null,
+          purchasePriceOverride: row.purchase_price_override != null ? Number(row.purchase_price_override) : null,
+          deliveryDiscountOverride: row.delivery_discount_override != null ? Number(row.delivery_discount_override) : null,
         };
       });
       set({ manualInputs: inputs });
     }
   },
 
-  saveManualInput: async (productName: string, field: 'adSpend' | 'packagingCost', value: number) => {
-    const current = get().manualInputs[productName] || { adSpend: 0, packagingCost: 0 };
-    const updated = { ...current, [field]: value };
+  saveManualInput: async (productName: string, field: keyof ProductManualInputs, value: number | null) => {
+    const current = get().manualInputs[productName] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
+    const updated: ProductManualInputs = { ...current, [field]: value };
 
-    // Update local state immediately
     set(state => ({
       manualInputs: { ...state.manualInputs, [productName]: updated },
     }));
 
-    // Persist to DB
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
@@ -142,6 +146,9 @@ export const useSyncStore = create<SyncState>((set, get) => ({
         product_name: productName,
         ad_spend: updated.adSpend,
         packaging_cost: updated.packagingCost,
+        sale_price_override: updated.salePriceOverride,
+        purchase_price_override: updated.purchasePriceOverride,
+        delivery_discount_override: updated.deliveryDiscountOverride,
         updated_at: new Date().toISOString(),
       } as any, { onConflict: 'user_id,product_name' });
   },

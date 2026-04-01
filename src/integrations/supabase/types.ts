@@ -416,25 +416,34 @@ export type Database = {
       synced_product_inputs: {
         Row: {
           ad_spend: number
+          delivery_discount_override: number | null
           id: string
           packaging_cost: number
           product_name: string
+          purchase_price_override: number | null
+          sale_price_override: number | null
           updated_at: string
           user_id: string
         }
         Insert: {
           ad_spend?: number
+          delivery_discount_override?: number | null
           id?: string
           packaging_cost?: number
           product_name: string
+          purchase_price_override?: number | null
+          sale_price_override?: number | null
           updated_at?: string
           user_id: string
         }
         Update: {
           ad_spend?: number
+          delivery_discount_override?: number | null
           id?: string
           packaging_cost?: number
           product_name?: string
+          purchase_price_override?: number | null
+          sale_price_override?: number | null
           updated_at?: string
           user_id?: string
         }

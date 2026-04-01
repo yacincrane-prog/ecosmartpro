@@ -4,7 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { 
   Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off, 
   Calendar, ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertCircle,
-  DollarSign, Package, Truck, RotateCcw, Phone, Settings2
+  DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -115,13 +115,20 @@ export default function SyncedDataPage() {
       const confirmationRate = created > 0 ? (confirmed / created) * 100 : 0;
       const deliveryRate = (delivered + returned) > 0 ? (delivered / (delivered + returned)) * 100 : 0;
 
-      const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0 };
+      const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
       const adSpendDZD = manual.adSpend * settings.currencyRate;
 
-      const revenue = delivered * product.sale_price;
-      const purchaseCost = delivered * product.purchase_price;
+      // Use overrides if available
+      const salePrice = manual.salePriceOverride ?? product.sale_price;
+      const purchasePrice = manual.purchasePriceOverride ?? product.purchase_price;
+      const discountTotal = manual.deliveryDiscountOverride != null 
+        ? manual.deliveryDiscountOverride * product.total_delivered 
+        : product.delivery_discount;
+
+      const revenue = delivered * salePrice;
+      const purchaseCost = delivered * purchasePrice;
       const perUnitDiscount = product.total_delivered > 0
-        ? product.delivery_discount / product.total_delivered
+        ? discountTotal / product.total_delivered
         : 0;
       const deliveryCost = delivered * perUnitDiscount;
       const returnCost = returned * settings.returnCost;
@@ -336,7 +343,15 @@ export default function SyncedDataPage() {
       {productStats.map(p => {
         const config = decisionConfig[p.decision];
         const isOpen = expandedCards.has(p.product.id);
-        const manual = manualInputs[p.product.name] || { adSpend: 0, packagingCost: 0 };
+        const manual = manualInputs[p.product.name] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
+
+        const getVal = (field: 'salePriceOverride' | 'purchasePriceOverride' | 'deliveryDiscountOverride', syncedVal: number) => {
+          return manual[field] ?? syncedVal;
+        };
+        const isOverridden = (field: 'salePriceOverride' | 'purchasePriceOverride' | 'deliveryDiscountOverride') => manual[field] != null;
+        const isMissing = (val: number, field: 'salePriceOverride' | 'purchasePriceOverride' | 'deliveryDiscountOverride') => val === 0 && !isOverridden(field);
+
+        const perUnitDiscountDisplay = p.product.total_delivered > 0 ? p.product.delivery_discount / p.product.total_delivered : 0;
 
         return (
           <Collapsible key={p.product.id} open={isOpen} onOpenChange={() => toggleCard(p.product.id)}>
@@ -370,18 +385,45 @@ export default function SyncedDataPage() {
 
               {/* Expanded content */}
               <CollapsibleContent className="pt-4 space-y-4">
-                {/* Synced stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <ReadOnlyField label="سعر البيع" value={`${p.product.sale_price.toLocaleString()} د.ج`} />
-                  <ReadOnlyField label="سعر الشراء" value={`${p.product.purchase_price.toLocaleString()} د.ج`} />
-                  <ReadOnlyField label="تخفيض التوصيل/طلب" value={`${(p.product.total_delivered > 0 ? p.product.delivery_discount / p.product.total_delivered : 0).toFixed(0)} د.ج`} />
-                  <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
+                {/* Editable price fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <EditableField
+                    label="سعر البيع (د.ج)"
+                    value={getVal('salePriceOverride', p.product.sale_price)}
+                    syncedValue={p.product.sale_price}
+                    isOverridden={isOverridden('salePriceOverride')}
+                    isMissing={isMissing(p.product.sale_price, 'salePriceOverride')}
+                    onChange={v => saveManualInput(p.product.name, 'salePriceOverride', v)}
+                    onReset={() => saveManualInput(p.product.name, 'salePriceOverride', null)}
+                  />
+                  <EditableField
+                    label="سعر الشراء (د.ج)"
+                    value={getVal('purchasePriceOverride', p.product.purchase_price)}
+                    syncedValue={p.product.purchase_price}
+                    isOverridden={isOverridden('purchasePriceOverride')}
+                    isMissing={isMissing(p.product.purchase_price, 'purchasePriceOverride')}
+                    onChange={v => saveManualInput(p.product.name, 'purchasePriceOverride', v)}
+                    onReset={() => saveManualInput(p.product.name, 'purchasePriceOverride', null)}
+                  />
+                  <EditableField
+                    label="تخفيض التوصيل/طلب (د.ج)"
+                    value={getVal('deliveryDiscountOverride', perUnitDiscountDisplay)}
+                    syncedValue={perUnitDiscountDisplay}
+                    isOverridden={isOverridden('deliveryDiscountOverride')}
+                    isMissing={isMissing(perUnitDiscountDisplay, 'deliveryDiscountOverride')}
+                    onChange={v => saveManualInput(p.product.name, 'deliveryDiscountOverride', v)}
+                    onReset={() => saveManualInput(p.product.name, 'deliveryDiscountOverride', null)}
+                  />
                 </div>
 
-                <div className="grid grid-cols-4 gap-3">
+                {/* Read-only stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
                   <ReadOnlyField label="المنشأة" value={p.created} />
                   <ReadOnlyField label="المؤكدة" value={p.confirmed} />
                   <ReadOnlyField label="المسلمة" value={p.delivered} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <ReadOnlyField label="المرتجعة" value={p.returned} />
                 </div>
 
@@ -453,6 +495,50 @@ export default function SyncedDataPage() {
           </Collapsible>
         );
       })}
+    </div>
+  );
+}
+
+interface EditableFieldProps {
+  label: string;
+  value: number;
+  syncedValue: number;
+  isOverridden: boolean;
+  isMissing: boolean;
+  onChange: (value: number) => void;
+  onReset: () => void;
+}
+
+function EditableField({ label, value, syncedValue, isOverridden, isMissing, onChange, onReset }: EditableFieldProps) {
+  const borderClass = isMissing
+    ? 'border-yellow-500/50 bg-yellow-500/5'
+    : isOverridden
+      ? 'border-blue-500/50 bg-blue-500/5'
+      : 'border-border/50 bg-muted/30';
+
+  return (
+    <div className={`p-2 rounded-lg border ${borderClass} relative`}>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] text-muted-foreground">{label}</p>
+        {isOverridden && (
+          <button onClick={onReset} className="text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-0.5" title="إعادة تعيين للقيمة المزامنة">
+            <RotateCw className="h-2.5 w-2.5" />
+          </button>
+        )}
+        {isMissing && <AlertTriangle className="h-3 w-3 text-yellow-500" />}
+      </div>
+      <Input
+        type="number"
+        value={value || ''}
+        onChange={e => onChange(Number(e.target.value) || 0)}
+        placeholder={isMissing ? 'أدخل القيمة' : String(syncedValue)}
+        className="h-7 text-sm font-semibold border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+      />
+      {isOverridden && (
+        <p className="text-[9px] text-blue-400 mt-0.5 flex items-center gap-0.5">
+          <Pencil className="h-2 w-2" /> معدّل يدوياً (الأصل: {syncedValue.toLocaleString()})
+        </p>
+      )}
     </div>
   );
 }
