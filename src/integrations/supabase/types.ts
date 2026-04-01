@@ -413,6 +413,33 @@ export type Database = {
         }
         Relationships: []
       }
+      synced_product_inputs: {
+        Row: {
+          ad_spend: number
+          id: string
+          packaging_cost: number
+          product_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ad_spend?: number
+          id?: string
+          packaging_cost?: number
+          product_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ad_spend?: number
+          id?: string
+          packaging_cost?: number
+          product_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       synced_products: {
         Row: {
           delivery_discount: number

@@ -6,9 +6,28 @@ interface StatCardProps {
   suffix?: string;
   variant?: 'default' | 'profit' | 'loss' | 'warning';
   icon?: ReactNode;
+  className?: string;
 }
 
-export default function StatCard({ label, value, suffix, variant = 'default', icon }: StatCardProps) {
+function formatValue(value: string | number, suffix?: string): string {
+  if (typeof value === 'string') return value;
+  
+  // Percentages: 1 decimal
+  if (suffix === '%') return value.toFixed(1);
+  
+  // Money or large numbers: use locale formatting
+  if (suffix === 'د.ج' || suffix === '$') {
+    return Number.isInteger(value) ? value.toLocaleString('ar-DZ') : value.toLocaleString('ar-DZ', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  
+  // Integers (orders, counts): no decimals
+  if (Number.isInteger(value)) return value.toLocaleString('ar-DZ');
+  
+  // Fallback
+  return value.toLocaleString('ar-DZ', { maximumFractionDigits: 2 });
+}
+
+export default function StatCard({ label, value, suffix, variant = 'default', icon, className = '' }: StatCardProps) {
   const colorMap = {
     default: 'text-foreground',
     profit: 'text-profit',
@@ -17,13 +36,13 @@ export default function StatCard({ label, value, suffix, variant = 'default', ic
   };
 
   return (
-    <div className="stat-card">
+    <div className={`stat-card ${className}`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs text-muted-foreground font-medium">{label}</span>
         {icon && <span className="text-muted-foreground">{icon}</span>}
       </div>
       <div className={`text-2xl font-bold ${colorMap[variant]}`}>
-        {typeof value === 'number' ? value.toFixed(2) : value}
+        {formatValue(value, suffix)}
         {suffix && <span className="text-sm font-normal text-muted-foreground mr-1">{suffix}</span>}
       </div>
     </div>
