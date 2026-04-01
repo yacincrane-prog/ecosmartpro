@@ -10,7 +10,7 @@ interface ApiToken {
   last_used_at: string | null;
 }
 
-interface SyncedProduct {
+export interface SyncedProduct {
   id: string;
   name: string;
   sale_price: number;
@@ -23,7 +23,7 @@ interface SyncedProduct {
   synced_at: string;
 }
 
-interface SyncedDailyStat {
+export interface SyncedDailyStat {
   id: string;
   product_name: string;
   stat_date: string;
@@ -34,16 +34,24 @@ interface SyncedDailyStat {
   synced_at: string;
 }
 
+export interface ProductManualInputs {
+  adSpend: number;
+  packagingCost: number;
+}
+
 interface SyncState {
   tokens: ApiToken[];
   products: SyncedProduct[];
   dailyStats: SyncedDailyStat[];
+  manualInputs: Record<string, ProductManualInputs>;
   loading: boolean;
   fetchApiTokens: () => Promise<void>;
   createApiToken: (label: string) => Promise<ApiToken | null>;
   deleteApiToken: (id: string) => Promise<void>;
   fetchSyncedProducts: () => Promise<void>;
   fetchSyncedDailyStats: () => Promise<void>;
+  fetchManualInputs: () => Promise<void>;
+  saveManualInput: (productName: string, field: 'adSpend' | 'packagingCost', value: number) => Promise<void>;
   fetchAllSyncedData: () => Promise<void>;
 }
 
@@ -51,6 +59,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   tokens: [],
   products: [],
   dailyStats: [],
+  manualInputs: {},
   loading: false,
 
   fetchApiTokens: async () => {
@@ -97,11 +106,52 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     if (data) set({ dailyStats: data as any });
   },
 
+  fetchManualInputs: async () => {
+    const { data } = await supabase
+      .from('synced_product_inputs' as any)
+      .select('*');
+    if (data) {
+      const inputs: Record<string, ProductManualInputs> = {};
+      (data as any[]).forEach((row: any) => {
+        inputs[row.product_name] = {
+          adSpend: Number(row.ad_spend),
+          packagingCost: Number(row.packaging_cost),
+        };
+      });
+      set({ manualInputs: inputs });
+    }
+  },
+
+  saveManualInput: async (productName: string, field: 'adSpend' | 'packagingCost', value: number) => {
+    const current = get().manualInputs[productName] || { adSpend: 0, packagingCost: 0 };
+    const updated = { ...current, [field]: value };
+
+    // Update local state immediately
+    set(state => ({
+      manualInputs: { ...state.manualInputs, [productName]: updated },
+    }));
+
+    // Persist to DB
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    await supabase
+      .from('synced_product_inputs' as any)
+      .upsert({
+        user_id: user.id,
+        product_name: productName,
+        ad_spend: updated.adSpend,
+        packaging_cost: updated.packagingCost,
+        updated_at: new Date().toISOString(),
+      } as any, { onConflict: 'user_id,product_name' });
+  },
+
   fetchAllSyncedData: async () => {
     set({ loading: true });
     await Promise.all([
       get().fetchSyncedProducts(),
       get().fetchSyncedDailyStats(),
+      get().fetchManualInputs(),
     ]);
     set({ loading: false });
   },
