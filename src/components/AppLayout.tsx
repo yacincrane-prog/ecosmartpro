@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, PlusCircle, Archive, Settings, BarChart3, LogOut, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, PlusCircle, Archive, Settings, BarChart3, LogOut, FlaskConical, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useAppStore } from '@/store/useAppStore';
 import { toast } from 'sonner';
