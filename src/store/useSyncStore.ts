@@ -37,6 +37,9 @@ export interface SyncedDailyStat {
 export interface ProductManualInputs {
   adSpend: number;
   packagingCost: number;
+  salePriceOverride: number | null;
+  purchasePriceOverride: number | null;
+  deliveryDiscountOverride: number | null;
 }
 
 interface SyncState {
