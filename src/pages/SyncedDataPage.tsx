@@ -115,13 +115,20 @@ export default function SyncedDataPage() {
       const confirmationRate = created > 0 ? (confirmed / created) * 100 : 0;
       const deliveryRate = (delivered + returned) > 0 ? (delivered / (delivered + returned)) * 100 : 0;
 
-      const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0 };
+      const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
       const adSpendDZD = manual.adSpend * settings.currencyRate;
 
-      const revenue = delivered * product.sale_price;
-      const purchaseCost = delivered * product.purchase_price;
+      // Use overrides if available
+      const salePrice = manual.salePriceOverride ?? product.sale_price;
+      const purchasePrice = manual.purchasePriceOverride ?? product.purchase_price;
+      const discountTotal = manual.deliveryDiscountOverride != null 
+        ? manual.deliveryDiscountOverride * product.total_delivered 
+        : product.delivery_discount;
+
+      const revenue = delivered * salePrice;
+      const purchaseCost = delivered * purchasePrice;
       const perUnitDiscount = product.total_delivered > 0
-        ? product.delivery_discount / product.total_delivered
+        ? discountTotal / product.total_delivered
         : 0;
       const deliveryCost = delivered * perUnitDiscount;
       const returnCost = returned * settings.returnCost;
