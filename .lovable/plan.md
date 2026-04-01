@@ -1,85 +1,85 @@
 
 
-# خطة تكامل EcoSmart - استقبال البيانات وإدارة API Tokens
-
-## ملخص
-إضافة نظام تكامل كامل مع منصة EcoSmart: جداول لتخزين البيانات المزامنة، Edge Function لاستقبال الطلبات، واجهة إدارة API Tokens في الإعدادات، وصفحة جديدة لعرض البيانات المزامنة مع حسابات تلقائية.
+# UX/UI Audit — صفحة مزامنة بيانات EcoSmart
 
 ---
 
-## الخطوة 1: إنشاء جداول قاعدة البيانات (Migration)
+## 1. المشاكل المكتشفة
 
-إنشاء 4 جداول جديدة بـ migration واحدة:
+### UX Problems
+- **Information overload**: كل منتج يعرض 8 خانات read-only + 2 manual inputs + 3 stat cards = 13 عنصر بصري. مع عدة منتجات يصبح التمرير طويل جداً
+- **No decision signal**: المستخدم يرى أرقام خام بدون توجيه واضح (هل المنتج ناجح؟ هل يجب إيقافه؟)
+- **Manual inputs reset on refresh**: مصاريف الإعلانات والتغليف تختفي عند إعادة تحميل الصفحة — لا يتم حفظها
+- **Date filter confusion**: خانتا التاريخ تظهران كـ dropdown arrows (chevrons) بدلاً من date pickers واضحة
+- **No cost breakdown visibility**: المستخدم يرى الربح النهائي فقط بدون فهم من أين جاءت الخسارة
 
-- **`api_tokens`** — رموز API مع `token` فريد (auto-generated hex)، `label`، `is_active`، `last_used_at`، وRLS بحيث كل مستخدم يدير رموزه فقط
-- **`synced_orders`** — الطلبات المستقبلة من EcoSmart (product_name, status, price, amount, quantity, discount, delivery_type, delivery_provider, wilaya, commune, order_created_at)
-- **`synced_products`** — المنتجات المزامنة (name, alias_name, sale_price, purchase_price, qty) مع UNIQUE على (user_id, name)
-- **`synced_delivery_prices`** — أسعار التوصيل حسب الولاية (wilaya_name, home_price, office_price) مع UNIQUE على (user_id, wilaya_name)
-
-كل الجداول مع RLS policies مناسبة.
-
----
-
-## الخطوة 2: إنشاء Edge Function `receive-orders`
-
-ملف: `supabase/functions/receive-orders/index.ts`
-
-**المنطق:**
-1. التحقق من `Authorization: Bearer <TOKEN>` بمطابقته مع `api_tokens` (is_active = true) باستخدام service_role key
-2. إذا كان Body يحتوي `{ "test": true }` → إرجاع `{ "ok": true }` فقط
-3. حذف جميع `synced_orders` القديمة للمستخدم
-4. Bulk insert للطلبات الجديدة
-5. Upsert للمنتجات في `synced_products` (on conflict: user_id + name)
-6. Upsert لأسعار التوصيل في `synced_delivery_prices` (on conflict: user_id + wilaya_name)
-7. تحديث `last_used_at` للـ token
-8. إرجاع `{ "ok": true, "orders_received": N, "products_received": N }`
-
-يتضمن CORS headers ومعالجة OPTIONS وInput validation.
+### UI Issues
+- **`.toFixed(2)` على الأعداد الصحيحة**: الطلبات تظهر `750.00` و`529.00` بدلاً من `750` و`529` — مربك وغير طبيعي
+- **Product cards all same visual weight**: لا تمييز بين منتج رابح ومنتج خاسر بصرياً
+- **ReadOnlyField sync icon repetitive**: أيقونة المزامنة مكررة 8 مرات في كل منتج — noise بصري
+- **StatCard nested inside stat-card**: بطاقات النتائج (إيرادات، ربح) هي StatCard داخل stat-card = حدود مزدوجة
+- **Profit card not prominent enough**: الربح الصافي (أهم رقم) له نفس حجم باقي البطاقات
 
 ---
 
-## الخطوة 3: تحديث صفحة الإعدادات
+## 2. خطة التحسين
 
-ملف: `src/pages/SettingsPage.tsx`
+### Phase 1: Quick Fixes (تأثير عالي، جهد منخفض)
 
-إضافة قسم **"ربط EcoSmart"** أسفل الإعدادات الحالية:
-- عرض Token الحالي (مخفي جزئياً) مع زر **نسخ**
-- زر **"إنشاء رمز جديد"** → يُولّد token ويعرضه
-- زر **"إلغاء الرمز"** → يحذف/يعطل Token
-- عرض **آخر استخدام** للرمز
-- نص توضيحي لكيفية الربط مع EcoSmart
+**A. إصلاح تنسيق الأرقام في StatCard**
+- الأعداد الصحيحة (طلبات) تُعرض بدون كسور: `750` بدلاً من `750.00`
+- النسب المئوية بخانة واحدة: `62.8%`
+- المبالغ المالية بدون كسور إذا كانت صحيحة: `424,750 د.ج`
+- تعديل في `StatCard.tsx`: استخدام `toLocaleString()` للأعداد الصحيحة و`.toFixed(1)` للنسب
 
----
+**B. إضافة Decision Badge لكل منتج**
+- بناءً على الربح + نسبة التوصيل، إضافة badge واضح:
+  - 🟢 `Scale` — ربح موجب + توصيل ≥ 60%
+  - 🟡 `Risk` — ربح موجب + توصيل < 60%، أو ربح سالب خفيف
+  - 🔴 `Kill` — ربح سالب كبير أو توصيل < 40%
+- يظهر بجانب اسم المنتج في header البطاقة
 
-## الخطوة 4: إنشاء صفحة البيانات المزامنة
+**C. تمييز بصري للمنتج حسب الأداء**
+- إضافة border-right ملون (أخضر/أصفر/أحمر) لبطاقة كل منتج حسب الـ decision badge
+- المنتج الخاسر يحصل على خلفية خفيفة حمراء `bg-red-500/5`
 
-ملف جديد: `src/pages/SyncedDataPage.tsx`
+**D. تقليل noise أيقونة المزامنة**
+- إزالة أيقونة `RefreshCw` من كل ReadOnlyField
+- الاكتفاء بعلامة "مزامنة تلقائية" واحدة في header المنتج
 
-**المحتوى:**
-- بانر أخضر "البيانات مُزامنة من EcoSmart" مع تاريخ آخر مزامنة (من `synced_at` في آخر طلب)
-- Empty state إذا لم تكن هناك بيانات (مع شرح خطوات الربط)
-- **إحصائيات تلقائية محسوبة من `synced_orders`:**
-  - عدد الطلبات حسب الحالة (معلقة، مؤكدة، مشحونة، مسلمة، مرتجعة، ملغاة، إلخ)
-  - نسبة التأكيد = (مؤكدة + مشحونة + مسلمة + مرتجعة) / إجمالي
-  - نسبة التوصيل = مسلمة / (مسلمة + مرتجعة)
-- **بيانات المنتجات** من `synced_products` (سعر شراء/بيع)
-- **حساب الربح** = مبلغ المسلمة - (سعر الشراء × الكمية) - تكلفة التوصيل - تكلفة المرتجعات
-- تكلفة التوصيل من `synced_delivery_prices` حسب ولاية كل طلب ونوعه
+### Phase 2: Structural Improvements (تحسين الهيكل)
 
-إضافة route `/synced-data` في `App.tsx` وlink في `AppLayout.tsx`.
+**E. طي/فتح تفاصيل المنتج (Collapsible)**
+- المنتج يظهر مطوياً: الاسم + Decision Badge + الربح + نسبة التوصيل فقط
+- عند الضغط يتوسع ليعرض كل التفاصيل
+- يحل مشكلة التراكم مع عدة منتجات
 
----
+**F. إضافة سطر تفصيل التكاليف**
+- عند توسيع المنتج، إضافة قسم "تفصيل التكاليف" يعرض:
+  - تكلفة الشراء | التوصيل | المرتجعات | التأكيد | العمليات | الإعلانات | التغليف
+- كل تكلفة كنسبة من الإيرادات (progress bar صغير)
+- يساعد المستخدم على تحديد أكبر مصدر للخسارة
 
-## الخطوة 5: إنشاء Zustand Store للبيانات المزامنة
+**G. تحسين KPI Totals في الأعلى**
+- تجميع البطاقات في مجموعتين بصرياً:
+  - **الأداء**: طلبات، تأكيد، توصيل، مرتجعات
+  - **المال**: إيرادات، تكاليف، ربح صافي
+- جعل بطاقة الربح الصافي أكبر (col-span-2) وأبرز
 
-ملف جديد: `src/store/useSyncStore.ts`
+**H. Quick date presets**
+- إضافة أزرار سريعة: "اليوم" | "آخر 7 أيام" | "آخر 30 يوم" | "هذا الشهر"
+- أسرع من اختيار تاريخين يدوياً
 
-- `fetchApiTokens()` — جلب tokens المستخدم
-- `createApiToken(label)` — إنشاء token جديد
-- `deleteApiToken(id)` — حذف token
-- `fetchSyncedOrders()` — جلب الطلبات المزامنة
-- `fetchSyncedProducts()` — جلب المنتجات المزامنة
-- `fetchSyncedDeliveryPrices()` — جلب أسعار التوصيل
+### Phase 3: Advanced Features (ميزات متقدمة)
+
+**I. حفظ المدخلات اليدوية في قاعدة البيانات**
+- جدول جديد `synced_product_inputs` لحفظ adSpend و packagingCost لكل منتج
+- البيانات تبقى بعد إعادة التحميل
+
+**J. ملخص ذكي أعلى الصفحة**
+- جملة واحدة مولّدة تلقائياً:
+  - "لديك 3 منتجات رابحة و1 خاسر. أكبر مشكلة: نسبة التوصيل المنخفضة في منتج X"
+- تعطي المستخدم القرار فوراً بدون قراءة كل الأرقام
 
 ---
 
@@ -87,11 +87,7 @@
 
 | ملف | تغيير |
 |-----|--------|
-| Migration جديدة | 4 جداول + RLS |
-| `supabase/functions/receive-orders/index.ts` | Edge Function جديدة |
-| `src/store/useSyncStore.ts` | Store جديد |
-| `src/pages/SettingsPage.tsx` | إضافة قسم API Tokens |
-| `src/pages/SyncedDataPage.tsx` | صفحة جديدة |
-| `src/App.tsx` | إضافة route |
-| `src/components/AppLayout.tsx` | إضافة nav link |
+| `src/components/StatCard.tsx` | إصلاح تنسيق الأرقام |
+| `src/pages/SyncedDataPage.tsx` | Decision badges, collapsible cards, cost breakdown, date presets, smart summary |
+| Migration جديدة | جدول `synced_product_inputs` (Phase 3) |
 
