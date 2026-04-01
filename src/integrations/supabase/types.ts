@@ -14,6 +14,286 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_memory: {
+        Row: {
+          context_data: Json | null
+          created_at: string
+          decision: string | null
+          id: string
+          product_id: string | null
+          summary: string
+          user_id: string
+        }
+        Insert: {
+          context_data?: Json | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          product_id?: string | null
+          summary: string
+          user_id: string
+        }
+        Update: {
+          context_data?: Json | null
+          created_at?: string
+          decision?: string | null
+          id?: string
+          product_id?: string | null
+          summary?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_conversations: {
+        Row: {
+          context_id: string | null
+          context_type: string
+          created_at: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context_id?: string | null
+          context_type?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context_id?: string | null
+          context_type?: string
+          created_at?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          last_used_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_used_at?: string | null
+          token?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          last_used_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      creative_generations: {
+        Row: {
+          aspect_ratio: string
+          bullet_points: string[] | null
+          created_at: string
+          creative_idea: string | null
+          cta_text: string | null
+          generated_image_url: string | null
+          headline: string | null
+          id: string
+          message_type: string
+          product_description: string | null
+          product_name: string
+          source_images: string[] | null
+          subheadline: string | null
+          text_layout: string | null
+          user_id: string
+        }
+        Insert: {
+          aspect_ratio?: string
+          bullet_points?: string[] | null
+          created_at?: string
+          creative_idea?: string | null
+          cta_text?: string | null
+          generated_image_url?: string | null
+          headline?: string | null
+          id?: string
+          message_type?: string
+          product_description?: string | null
+          product_name?: string
+          source_images?: string[] | null
+          subheadline?: string | null
+          text_layout?: string | null
+          user_id: string
+        }
+        Update: {
+          aspect_ratio?: string
+          bullet_points?: string[] | null
+          created_at?: string
+          creative_idea?: string | null
+          cta_text?: string | null
+          generated_image_url?: string | null
+          headline?: string | null
+          id?: string
+          message_type?: string
+          product_description?: string | null
+          product_name?: string
+          source_images?: string[] | null
+          subheadline?: string | null
+          text_layout?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      landing_projects: {
+        Row: {
+          created_at: string
+          desired_tone: string | null
+          id: string
+          market_country: string | null
+          price: string | null
+          product_description: string | null
+          product_images: string[] | null
+          product_name: string
+          status: string
+          strategy_output: Json | null
+          structure_output: Json | null
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          desired_tone?: string | null
+          id?: string
+          market_country?: string | null
+          price?: string | null
+          product_description?: string | null
+          product_images?: string[] | null
+          product_name: string
+          status?: string
+          strategy_output?: Json | null
+          structure_output?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          desired_tone?: string | null
+          id?: string
+          market_country?: string | null
+          price?: string | null
+          product_description?: string | null
+          product_images?: string[] | null
+          product_name?: string
+          status?: string
+          strategy_output?: Json | null
+          structure_output?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      landing_sections: {
+        Row: {
+          copy_direction: string | null
+          created_at: string
+          generated_copy: Json | null
+          goal: string | null
+          id: string
+          image_style: string | null
+          image_url: string | null
+          project_id: string
+          section_order: number
+          section_type: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          copy_direction?: string | null
+          created_at?: string
+          generated_copy?: Json | null
+          goal?: string | null
+          id?: string
+          image_style?: string | null
+          image_url?: string | null
+          project_id: string
+          section_order?: number
+          section_type: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          copy_direction?: string | null
+          created_at?: string
+          generated_copy?: Json | null
+          goal?: string | null
+          id?: string
+          image_style?: string | null
+          image_url?: string | null
+          project_id?: string
+          section_order?: number
+          section_type?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_sections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "landing_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_periods: {
         Row: {
           ad_spend_usd: number
@@ -93,6 +373,120 @@ export type Database = {
           id?: string
           name?: string
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      synced_delivery_prices: {
+        Row: {
+          home_price: number
+          id: string
+          office_price: number
+          synced_at: string
+          user_id: string
+          wilaya_name: string
+        }
+        Insert: {
+          home_price?: number
+          id?: string
+          office_price?: number
+          synced_at?: string
+          user_id: string
+          wilaya_name: string
+        }
+        Update: {
+          home_price?: number
+          id?: string
+          office_price?: number
+          synced_at?: string
+          user_id?: string
+          wilaya_name?: string
+        }
+        Relationships: []
+      }
+      synced_orders: {
+        Row: {
+          amount: number
+          commune: string
+          delivery_provider: string
+          delivery_type: string
+          discount: number
+          id: string
+          order_created_at: string
+          price: number
+          product_name: string
+          product_variant: string
+          quantity: number
+          status: string
+          synced_at: string
+          user_id: string
+          wilaya: string
+        }
+        Insert: {
+          amount?: number
+          commune?: string
+          delivery_provider?: string
+          delivery_type?: string
+          discount?: number
+          id?: string
+          order_created_at?: string
+          price?: number
+          product_name: string
+          product_variant?: string
+          quantity?: number
+          status: string
+          synced_at?: string
+          user_id: string
+          wilaya?: string
+        }
+        Update: {
+          amount?: number
+          commune?: string
+          delivery_provider?: string
+          delivery_type?: string
+          discount?: number
+          id?: string
+          order_created_at?: string
+          price?: number
+          product_name?: string
+          product_variant?: string
+          quantity?: number
+          status?: string
+          synced_at?: string
+          user_id?: string
+          wilaya?: string
+        }
+        Relationships: []
+      }
+      synced_products: {
+        Row: {
+          alias_name: string
+          id: string
+          name: string
+          purchase_price: number
+          qty: number
+          sale_price: number
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          alias_name?: string
+          id?: string
+          name: string
+          purchase_price?: number
+          qty?: number
+          sale_price?: number
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          alias_name?: string
+          id?: string
+          name?: string
+          purchase_price?: number
+          qty?: number
+          sale_price?: number
+          synced_at?: string
           user_id?: string
         }
         Relationships: []
