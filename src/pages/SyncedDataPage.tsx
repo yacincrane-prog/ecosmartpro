@@ -120,7 +120,10 @@ export default function SyncedDataPage() {
 
       const revenue = delivered * product.sale_price;
       const purchaseCost = delivered * product.purchase_price;
-      const deliveryCost = product.delivery_discount;
+      const perUnitDiscount = product.total_delivered > 0
+        ? product.delivery_discount / product.total_delivered
+        : 0;
+      const deliveryCost = delivered * perUnitDiscount;
       const returnCost = returned * settings.returnCost;
       const confirmationCost = confirmed * settings.confirmationCost;
       const operationCost = delivered * settings.operationCostPerOrder;
@@ -280,9 +283,15 @@ export default function SyncedDataPage() {
           </div>
         </div>
         {dateFrom && dateTo && (
-          <p className="text-xs text-muted-foreground mt-2">
-            الأرقام محسوبة من الإحصائيات اليومية ضمن الفترة المحددة
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-muted-foreground">
+              الأرقام محسوبة من الإحصائيات اليومية ضمن الفترة المحددة
+            </p>
+            <p className="text-xs text-yellow-500 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              مصاريف الإعلانات والتغليف تمثل القيمة الإجمالية وليست محسوبة حسب الفترة المحددة
+            </p>
+          </div>
         )}
       </div>
 
@@ -365,7 +374,7 @@ export default function SyncedDataPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <ReadOnlyField label="سعر البيع" value={`${p.product.sale_price.toLocaleString()} د.ج`} />
                   <ReadOnlyField label="سعر الشراء" value={`${p.product.purchase_price.toLocaleString()} د.ج`} />
-                  <ReadOnlyField label="تخفيض التوصيل" value={`${p.product.delivery_discount.toLocaleString()} د.ج`} />
+                  <ReadOnlyField label="تخفيض التوصيل/طلب" value={`${(p.product.total_delivered > 0 ? p.product.delivery_discount / p.product.total_delivered : 0).toFixed(0)} د.ج`} />
                   <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
                 </div>
 
@@ -404,7 +413,8 @@ export default function SyncedDataPage() {
                 <CostBreakdown stat={p} />
 
                 {/* Results */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Results + New Metrics */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <div className={`p-3 rounded-lg border ${p.revenue > 0 ? 'border-border' : 'border-border/50'}`}>
                     <p className="text-xs text-muted-foreground">الإيرادات</p>
                     <p className="text-lg font-bold">{p.revenue.toLocaleString('ar-DZ')} <span className="text-xs font-normal text-muted-foreground">د.ج</span></p>
@@ -413,11 +423,31 @@ export default function SyncedDataPage() {
                     <p className="text-xs text-muted-foreground">نسبة التوصيل</p>
                     <p className={`text-lg font-bold ${p.deliveryRate >= 60 ? 'text-profit' : 'text-loss'}`}>{p.deliveryRate.toFixed(1)}%</p>
                   </div>
-                  <div className={`p-3 rounded-lg border ${p.profit >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                  <div className={`p-3 rounded-lg border ${p.profit >= 0 ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5'} col-span-2 sm:col-span-1`}>
                     <p className="text-xs text-muted-foreground">الربح الصافي</p>
                     <p className={`text-lg font-bold ${p.profit >= 0 ? 'text-profit' : 'text-loss'}`}>{p.profit.toLocaleString('ar-DZ')} <span className="text-xs font-normal text-muted-foreground">د.ج</span></p>
                   </div>
+                  <div className="p-3 rounded-lg border border-border/50">
+                    <p className="text-xs text-muted-foreground">هامش الربح</p>
+                    <p className={`text-lg font-bold ${p.revenue > 0 && (p.profit / p.revenue) * 100 >= 0 ? 'text-profit' : 'text-loss'}`}>
+                      {p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : '0'}%
+                    </p>
+                  </div>
                 </div>
+                {p.delivered > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg border border-border/50">
+                      <p className="text-xs text-muted-foreground">تكلفة الطلب المسلّم</p>
+                      <p className="text-sm font-bold">{(p.totalCost / p.delivered).toFixed(0)} د.ج</p>
+                    </div>
+                    {p.adSpendDZD > 0 && (
+                      <div className="p-3 rounded-lg border border-border/50">
+                        <p className="text-xs text-muted-foreground">تكلفة الاكتساب</p>
+                        <p className="text-sm font-bold">{(p.adSpendDZD / p.delivered).toFixed(0)} د.ج</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </CollapsibleContent>
             </div>
           </Collapsible>
