@@ -343,7 +343,15 @@ export default function SyncedDataPage() {
       {productStats.map(p => {
         const config = decisionConfig[p.decision];
         const isOpen = expandedCards.has(p.product.id);
-        const manual = manualInputs[p.product.name] || { adSpend: 0, packagingCost: 0 };
+        const manual = manualInputs[p.product.name] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
+
+        const getVal = (field: 'salePriceOverride' | 'purchasePriceOverride' | 'deliveryDiscountOverride', syncedVal: number) => {
+          return manual[field] ?? syncedVal;
+        };
+        const isOverridden = (field: 'salePriceOverride' | 'purchasePriceOverride' | 'deliveryDiscountOverride') => manual[field] != null;
+        const isMissing = (val: number, field: 'salePriceOverride' | 'purchasePriceOverride' | 'deliveryDiscountOverride') => val === 0 && !isOverridden(field);
+
+        const perUnitDiscountDisplay = p.product.total_delivered > 0 ? p.product.delivery_discount / p.product.total_delivered : 0;
 
         return (
           <Collapsible key={p.product.id} open={isOpen} onOpenChange={() => toggleCard(p.product.id)}>
@@ -377,18 +385,45 @@ export default function SyncedDataPage() {
 
               {/* Expanded content */}
               <CollapsibleContent className="pt-4 space-y-4">
-                {/* Synced stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <ReadOnlyField label="سعر البيع" value={`${p.product.sale_price.toLocaleString()} د.ج`} />
-                  <ReadOnlyField label="سعر الشراء" value={`${p.product.purchase_price.toLocaleString()} د.ج`} />
-                  <ReadOnlyField label="تخفيض التوصيل/طلب" value={`${(p.product.total_delivered > 0 ? p.product.delivery_discount / p.product.total_delivered : 0).toFixed(0)} د.ج`} />
-                  <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
+                {/* Editable price fields */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <EditableField
+                    label="سعر البيع (د.ج)"
+                    value={getVal('salePriceOverride', p.product.sale_price)}
+                    syncedValue={p.product.sale_price}
+                    isOverridden={isOverridden('salePriceOverride')}
+                    isMissing={isMissing(p.product.sale_price, 'salePriceOverride')}
+                    onChange={v => saveManualInput(p.product.name, 'salePriceOverride', v)}
+                    onReset={() => saveManualInput(p.product.name, 'salePriceOverride', null)}
+                  />
+                  <EditableField
+                    label="سعر الشراء (د.ج)"
+                    value={getVal('purchasePriceOverride', p.product.purchase_price)}
+                    syncedValue={p.product.purchase_price}
+                    isOverridden={isOverridden('purchasePriceOverride')}
+                    isMissing={isMissing(p.product.purchase_price, 'purchasePriceOverride')}
+                    onChange={v => saveManualInput(p.product.name, 'purchasePriceOverride', v)}
+                    onReset={() => saveManualInput(p.product.name, 'purchasePriceOverride', null)}
+                  />
+                  <EditableField
+                    label="تخفيض التوصيل/طلب (د.ج)"
+                    value={getVal('deliveryDiscountOverride', perUnitDiscountDisplay)}
+                    syncedValue={perUnitDiscountDisplay}
+                    isOverridden={isOverridden('deliveryDiscountOverride')}
+                    isMissing={isMissing(perUnitDiscountDisplay, 'deliveryDiscountOverride')}
+                    onChange={v => saveManualInput(p.product.name, 'deliveryDiscountOverride', v)}
+                    onReset={() => saveManualInput(p.product.name, 'deliveryDiscountOverride', null)}
+                  />
                 </div>
 
-                <div className="grid grid-cols-4 gap-3">
+                {/* Read-only stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
                   <ReadOnlyField label="المنشأة" value={p.created} />
                   <ReadOnlyField label="المؤكدة" value={p.confirmed} />
                   <ReadOnlyField label="المسلمة" value={p.delivered} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
                   <ReadOnlyField label="المرتجعة" value={p.returned} />
                 </div>
 
