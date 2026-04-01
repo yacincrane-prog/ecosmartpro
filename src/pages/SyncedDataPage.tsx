@@ -1,81 +1,120 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSyncStore } from '@/store/useSyncStore';
-import { Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off } from 'lucide-react';
+import { useAppStore } from '@/store/useAppStore';
+import { Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off, RefreshCcw, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
-
-const STATUS_GROUPS = {
-  received: ['معلقة', 'مؤكدة', 'مشحونة', 'مسلمة', 'مرتجعة', 'ملغاة', 'لا يرد', 'مؤجلة', 'جاري التوصيل', 'نحو الإرجاع'],
-  confirmed: ['مؤكدة', 'مشحونة', 'مسلمة', 'مرتجعة', 'جاري التوصيل', 'نحو الإرجاع'],
-  delivered: ['مسلمة'],
-  returned: ['مرتجعة', 'نحو الإرجاع'],
-  cancelled: ['ملغاة', 'لا يرد'],
-};
+import StatCard from '@/components/StatCard';
 
 export default function SyncedDataPage() {
-  const { orders, products, deliveryPrices, loading, fetchAllSyncedData } = useSyncStore();
+  const { products, dailyStats, loading, fetchAllSyncedData } = useSyncStore();
+  const { settings } = useAppStore();
   const navigate = useNavigate();
+
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<string>('all');
+
+  // Manual inputs per product (ad spend, packaging)
+  const [manualInputs, setManualInputs] = useState<Record<string, { adSpend: number; packagingCost: number }>>({});
 
   useEffect(() => {
     fetchAllSyncedData();
   }, []);
 
   const lastSync = useMemo(() => {
-    if (orders.length === 0) return null;
-    return orders.reduce((latest, o) => o.synced_at > latest ? o.synced_at : latest, orders[0].synced_at);
-  }, [orders]);
+    if (products.length === 0) return null;
+    return products.reduce((latest, p) => p.synced_at > latest ? p.synced_at : latest, products[0].synced_at);
+  }, [products]);
 
-  const stats = useMemo(() => {
-    const total = orders.length;
-    const byStatus: Record<string, number> = {};
-    orders.forEach(o => {
-      byStatus[o.status] = (byStatus[o.status] || 0) + 1;
-    });
+  // Filter products
+  const displayProducts = useMemo(() => {
+    if (selectedProduct === 'all') return products;
+    return products.filter(p => p.name === selectedProduct);
+  }, [products, selectedProduct]);
 
-    const countByGroup = (statuses: string[]) => orders.filter(o => statuses.includes(o.status)).length;
+  // Calculate stats per product (from daily_stats if date range, otherwise from totals)
+  const productStats = useMemo(() => {
+    return displayProducts.map(product => {
+      let created: number, confirmed: number, delivered: number, returned: number;
 
-    const confirmed = countByGroup(STATUS_GROUPS.confirmed);
-    const delivered = countByGroup(STATUS_GROUPS.delivered);
-    const returned = countByGroup(STATUS_GROUPS.returned);
-
-    const confirmationRate = total > 0 ? (confirmed / total) * 100 : 0;
-    const deliveryRate = (delivered + returned) > 0 ? (delivered / (delivered + returned)) * 100 : 0;
-
-    // Revenue from delivered orders
-    const deliveredOrders = orders.filter(o => STATUS_GROUPS.delivered.includes(o.status));
-    const totalRevenue = deliveredOrders.reduce((s, o) => s + o.amount, 0);
-
-    // Cost calculation
-    const deliveredQty = deliveredOrders.reduce((s, o) => s + o.quantity, 0);
-    let totalPurchaseCost = 0;
-    deliveredOrders.forEach(o => {
-      const prod = products.find(p => p.name === o.product_name);
-      if (prod) totalPurchaseCost += prod.purchase_price * o.quantity;
-    });
-
-    // Delivery cost
-    let totalDeliveryCost = 0;
-    deliveredOrders.forEach(o => {
-      const dp = deliveryPrices.find(d => d.wilaya_name === o.wilaya);
-      if (dp) {
-        totalDeliveryCost += o.delivery_type === 'office' ? dp.office_price : dp.home_price;
+      if (dateFrom && dateTo) {
+        // Sum daily stats within date range
+        const filtered = dailyStats.filter(s =>
+          s.product_name === product.name &&
+          s.stat_date >= dateFrom &&
+          s.stat_date <= dateTo
+        );
+        created = filtered.reduce((s, d) => s + d.created, 0);
+        confirmed = filtered.reduce((s, d) => s + d.confirmed, 0);
+        delivered = filtered.reduce((s, d) => s + d.delivered, 0);
+        returned = filtered.reduce((s, d) => s + d.returned, 0);
+      } else {
+        created = product.total_created;
+        confirmed = product.total_confirmed;
+        delivered = product.total_delivered;
+        returned = product.total_returned;
       }
+
+      const confirmationRate = created > 0 ? (confirmed / created) * 100 : 0;
+      const deliveryRate = (delivered + returned) > 0 ? (delivered / (delivered + returned)) * 100 : 0;
+
+      const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0 };
+      const adSpendDZD = manual.adSpend * settings.currencyRate;
+
+      const revenue = delivered * product.sale_price;
+      const purchaseCost = delivered * product.purchase_price;
+      const deliveryCost = delivered * product.delivery_discount;
+      const returnCost = returned * settings.returnCost;
+      const confirmationCost = confirmed * settings.confirmationCost;
+      const operationCost = confirmed * settings.operationCostPerOrder;
+      const packagingTotal = delivered * manual.packagingCost;
+      const totalCost = purchaseCost + deliveryCost + returnCost + adSpendDZD + confirmationCost + operationCost + packagingTotal;
+      const profit = revenue - totalCost;
+
+      return {
+        ...product,
+        created,
+        confirmed,
+        delivered,
+        returned,
+        confirmationRate,
+        deliveryRate,
+        revenue,
+        profit,
+        totalCost,
+        adSpendDZD,
+        manual,
+      };
     });
+  }, [displayProducts, dailyStats, dateFrom, dateTo, manualInputs, settings]);
 
-    // Return cost
-    const returnedOrders = orders.filter(o => STATUS_GROUPS.returned.includes(o.status));
-    let totalReturnCost = 0;
-    returnedOrders.forEach(o => {
-      const dp = deliveryPrices.find(d => d.wilaya_name === o.wilaya);
-      if (dp) {
-        totalReturnCost += o.delivery_type === 'office' ? dp.office_price : dp.home_price;
-      }
-    });
+  // Totals
+  const totals = useMemo(() => {
+    return productStats.reduce(
+      (acc, p) => ({
+        created: acc.created + p.created,
+        confirmed: acc.confirmed + p.confirmed,
+        delivered: acc.delivered + p.delivered,
+        returned: acc.returned + p.returned,
+        revenue: acc.revenue + p.revenue,
+        profit: acc.profit + p.profit,
+      }),
+      { created: 0, confirmed: 0, delivered: 0, returned: 0, revenue: 0, profit: 0 }
+    );
+  }, [productStats]);
 
-    const profit = totalRevenue - totalPurchaseCost - totalDeliveryCost - totalReturnCost;
+  const totalConfirmationRate = totals.created > 0 ? (totals.confirmed / totals.created) * 100 : 0;
+  const totalDeliveryRate = (totals.delivered + totals.returned) > 0 ? (totals.delivered / (totals.delivered + totals.returned)) * 100 : 0;
 
-    return { total, byStatus, confirmed, delivered, returned, confirmationRate, deliveryRate, totalRevenue, profit, deliveredQty };
-  }, [orders, products, deliveryPrices]);
+  const updateManualInput = (productName: string, field: 'adSpend' | 'packagingCost', value: number) => {
+    setManualInputs(prev => ({
+      ...prev,
+      [productName]: { ...(prev[productName] || { adSpend: 0, packagingCost: 0 }), [field]: value },
+    }));
+  };
 
   if (loading) {
     return (
@@ -85,13 +124,13 @@ export default function SyncedDataPage() {
     );
   }
 
-  if (orders.length === 0) {
+  if (products.length === 0) {
     return (
       <div className="max-w-lg mx-auto text-center py-20 space-y-4">
         <Link2Off className="h-16 w-16 mx-auto text-muted-foreground" />
-        <h2 className="text-xl font-bold">لا توجد بيانات مزامنة</h2>
+        <h2 className="text-xl font-bold">لم يتم ربط EcoSmart بعد</h2>
         <p className="text-muted-foreground text-sm">
-          لربط منصة EcoSmart، اذهب إلى <strong>الإعدادات</strong> وأنشئ رمز API، ثم أضفه في إعدادات EcoSmart.
+          اذهب إلى <strong>الإعدادات</strong> وأنشئ رمز API، ثم أضفه في إعدادات EcoSmart لبدء المزامنة.
         </p>
         <Button variant="outline" onClick={() => navigate('/settings')}>
           الذهاب للإعدادات
@@ -100,100 +139,145 @@ export default function SyncedDataPage() {
     );
   }
 
-  const statusEntries = Object.entries(stats.byStatus).sort((a, b) => b[1] - a[1]);
-
   return (
     <div className="space-y-6">
       {/* Sync banner */}
       <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
         <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
         <span className="text-sm text-emerald-400">
-          ✅ البيانات مُزامنة من EcoSmart — آخر مزامنة: {lastSync ? new Date(lastSync).toLocaleString('ar-DZ') : '—'}
+          آخر مزامنة: {lastSync ? new Date(lastSync).toLocaleString('ar-DZ') : '—'}
         </span>
         <Button variant="ghost" size="icon" className="mr-auto" onClick={() => fetchAllSyncedData()}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
 
-      <h2 className="text-2xl font-bold">📊 بيانات EcoSmart</h2>
+      {/* Date Range Filter */}
+      <div className="stat-card">
+        <div className="flex items-center gap-2 mb-3">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">فترة زمنية (اختياري)</h3>
+        </div>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div className="flex-1 min-w-[140px]">
+            <Label className="text-xs text-muted-foreground">من</Label>
+            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field" />
+          </div>
+          <div className="flex-1 min-w-[140px]">
+            <Label className="text-xs text-muted-foreground">إلى</Label>
+            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field" />
+          </div>
+          <div className="flex-1 min-w-[140px]">
+            <Label className="text-xs text-muted-foreground">المنتج</Label>
+            <select
+              value={selectedProduct}
+              onChange={e => setSelectedProduct(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+            >
+              <option value="all">جميع المنتجات</option>
+              {products.map(p => (
+                <option key={p.id} value={p.name}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          {(dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setDateFrom(''); setDateTo(''); }}>
+              <RefreshCcw className="h-3.5 w-3.5 ml-1" /> إعادة تعيين
+            </Button>
+          )}
+        </div>
+        {dateFrom && dateTo && (
+          <p className="text-xs text-muted-foreground mt-2">
+            الأرقام محسوبة من الإحصائيات اليومية ضمن الفترة المحددة
+          </p>
+        )}
+      </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <KpiCard label="إجمالي الطلبات" value={stats.total} />
-        <KpiCard label="الطلبات المسلمة" value={stats.delivered} color="text-emerald-400" />
-        <KpiCard label="المرتجعات" value={stats.returned} color="text-red-400" />
-        <KpiCard label="نسبة التأكيد" value={`${stats.confirmationRate.toFixed(1)}%`} color={stats.confirmationRate >= 50 ? 'text-emerald-400' : 'text-yellow-400'} />
-        <KpiCard label="نسبة التوصيل" value={`${stats.deliveryRate.toFixed(1)}%`} color={stats.deliveryRate >= 60 ? 'text-emerald-400' : 'text-red-400'} />
-        <KpiCard label="الإيرادات" value={`${stats.totalRevenue.toLocaleString()} د.ج`} />
-        <KpiCard label="الربح الصافي" value={`${stats.profit.toLocaleString()} د.ج`} color={stats.profit >= 0 ? 'text-emerald-400' : 'text-red-400'} />
-        <KpiCard label="المنتجات" value={products.length} />
+      {/* KPI Totals */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="الطلبات المنشأة" value={totals.created} />
+        <StatCard label="المؤكدة" value={totals.confirmed} />
+        <StatCard label="المسلمة" value={totals.delivered} variant="profit" />
+        <StatCard label="المرتجعة" value={totals.returned} variant="loss" />
+        <StatCard label="نسبة التأكيد" value={totalConfirmationRate} suffix="%" variant={totalConfirmationRate >= 50 ? 'profit' : 'warning'} />
+        <StatCard label="نسبة التوصيل" value={totalDeliveryRate} suffix="%" variant={totalDeliveryRate >= 60 ? 'profit' : 'loss'} />
+        <StatCard label="الإيرادات" value={totals.revenue} suffix="د.ج" />
+        <StatCard label="الربح الصافي" value={totals.profit} suffix="د.ج" variant={totals.profit >= 0 ? 'profit' : 'loss'} />
       </div>
 
       {/* Alerts */}
-      {stats.profit < 0 && (
+      {totals.profit < 0 && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
           <AlertTriangle className="h-4 w-4" /> الربح الصافي سالب!
         </div>
       )}
-      {stats.deliveryRate < 60 && stats.delivered > 0 && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-sm">
-          <AlertTriangle className="h-4 w-4" /> نسبة التوصيل أقل من 60%
-        </div>
-      )}
 
-      {/* Status breakdown */}
-      <div className="stat-card">
-        <h3 className="font-semibold mb-3">توزيع الحالات</h3>
-        <div className="space-y-2">
-          {statusEntries.map(([status, count]) => (
-            <div key={status} className="flex items-center justify-between text-sm">
-              <span>{status}</span>
-              <div className="flex items-center gap-2">
-                <div className="w-32 h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: `${(count / stats.total) * 100}%` }} />
-                </div>
-                <span className="text-muted-foreground w-10 text-left">{count}</span>
-              </div>
+      {/* Product Cards */}
+      <h3 className="text-lg font-bold">تفاصيل المنتجات</h3>
+      {productStats.map(p => (
+        <div key={p.id} className="stat-card space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-base">{p.name}</h4>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <RefreshCw className="h-3 w-3" /> مزامنة تلقائية
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Products table */}
-      <div className="stat-card">
-        <h3 className="font-semibold mb-3">المنتجات المزامنة</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border text-muted-foreground">
-                <th className="text-right py-2">المنتج</th>
-                <th className="text-right py-2">سعر البيع</th>
-                <th className="text-right py-2">سعر الشراء</th>
-                <th className="text-right py-2">الكمية</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map(p => (
-                <tr key={p.id} className="border-b border-border/50">
-                  <td className="py-2">{p.alias_name || p.name}</td>
-                  <td className="py-2">{p.sale_price.toLocaleString()} د.ج</td>
-                  <td className="py-2">{p.purchase_price.toLocaleString()} د.ج</td>
-                  <td className="py-2">{p.qty}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {/* Synced fields (read-only) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <ReadOnlyField label="سعر البيع" value={`${p.sale_price.toLocaleString()} د.ج`} />
+            <ReadOnlyField label="سعر الشراء" value={`${p.purchase_price.toLocaleString()} د.ج`} />
+            <ReadOnlyField label="تخفيض التوصيل" value={`${p.delivery_discount.toLocaleString()} د.ج`} />
+            <ReadOnlyField label="الطلبات المنشأة" value={p.created} />
+            <ReadOnlyField label="المؤكدة" value={p.confirmed} />
+            <ReadOnlyField label="المسلمة" value={p.delivered} />
+            <ReadOnlyField label="المرتجعة" value={p.returned} />
+            <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
+          </div>
+
+          {/* Manual inputs */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">مصاريف الإعلانات ($)</Label>
+              <Input
+                type="number"
+                value={p.manual.adSpend || ''}
+                onChange={e => updateManualInput(p.name, 'adSpend', Number(e.target.value) || 0)}
+                placeholder="0"
+                className="input-field"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-1 block">تكلفة التغليف / طلب (د.ج)</Label>
+              <Input
+                type="number"
+                value={p.manual.packagingCost || ''}
+                onChange={e => updateManualInput(p.name, 'packagingCost', Number(e.target.value) || 0)}
+                placeholder="0"
+                className="input-field"
+              />
+            </div>
+          </div>
+
+          {/* Results */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <StatCard label="الإيرادات" value={p.revenue} suffix="د.ج" />
+            <StatCard label="نسبة التوصيل" value={p.deliveryRate} suffix="%" variant={p.deliveryRate >= 60 ? 'profit' : 'loss'} />
+            <StatCard label="الربح الصافي" value={p.profit} suffix="د.ج" variant={p.profit >= 0 ? 'profit' : 'loss'} />
+          </div>
         </div>
-      </div>
+      ))}
     </div>
   );
 }
 
-function KpiCard({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function ReadOnlyField({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="stat-card text-center">
-      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className={`text-xl font-bold ${color || ''}`}>{value}</p>
+    <div className="p-2 rounded-lg bg-muted/30 border border-border/50">
+      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+        <RefreshCw className="h-2.5 w-2.5" /> {label}
+      </p>
+      <p className="text-sm font-semibold mt-0.5">{value}</p>
     </div>
   );
 }

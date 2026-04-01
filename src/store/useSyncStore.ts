@@ -10,66 +10,52 @@ interface ApiToken {
   last_used_at: string | null;
 }
 
-interface SyncedOrder {
-  id: string;
-  product_name: string;
-  product_variant: string;
-  status: string;
-  price: number;
-  amount: number;
-  quantity: number;
-  discount: number;
-  delivery_type: string;
-  delivery_provider: string;
-  wilaya: string;
-  commune: string;
-  order_created_at: string;
-  synced_at: string;
-}
-
 interface SyncedProduct {
   id: string;
   name: string;
-  alias_name: string;
   sale_price: number;
   purchase_price: number;
-  qty: number;
+  delivery_discount: number;
+  total_created: number;
+  total_confirmed: number;
+  total_delivered: number;
+  total_returned: number;
   synced_at: string;
 }
 
-interface SyncedDeliveryPrice {
+interface SyncedDailyStat {
   id: string;
-  wilaya_name: string;
-  home_price: number;
-  office_price: number;
+  product_name: string;
+  stat_date: string;
+  created: number;
+  confirmed: number;
+  delivered: number;
+  returned: number;
   synced_at: string;
 }
 
 interface SyncState {
   tokens: ApiToken[];
-  orders: SyncedOrder[];
   products: SyncedProduct[];
-  deliveryPrices: SyncedDeliveryPrice[];
+  dailyStats: SyncedDailyStat[];
   loading: boolean;
   fetchApiTokens: () => Promise<void>;
   createApiToken: (label: string) => Promise<ApiToken | null>;
   deleteApiToken: (id: string) => Promise<void>;
-  fetchSyncedOrders: () => Promise<void>;
   fetchSyncedProducts: () => Promise<void>;
-  fetchSyncedDeliveryPrices: () => Promise<void>;
+  fetchSyncedDailyStats: () => Promise<void>;
   fetchAllSyncedData: () => Promise<void>;
 }
 
 export const useSyncStore = create<SyncState>((set, get) => ({
   tokens: [],
-  orders: [],
   products: [],
-  deliveryPrices: [],
+  dailyStats: [],
   loading: false,
 
   fetchApiTokens: async () => {
     const { data } = await supabase
-      .from('api_tokens' as any)
+      .from('api_tokens')
       .select('*')
       .order('created_at', { ascending: false });
     if (data) set({ tokens: data as any });
@@ -79,7 +65,7 @@ export const useSyncStore = create<SyncState>((set, get) => ({
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const { data, error } = await supabase
-      .from('api_tokens' as any)
+      .from('api_tokens')
       .insert({ user_id: user.id, label } as any)
       .select()
       .single();
@@ -91,40 +77,31 @@ export const useSyncStore = create<SyncState>((set, get) => ({
   },
 
   deleteApiToken: async (id: string) => {
-    await supabase.from('api_tokens' as any).delete().eq('id', id);
+    await supabase.from('api_tokens').delete().eq('id', id);
     await get().fetchApiTokens();
-  },
-
-  fetchSyncedOrders: async () => {
-    const { data } = await supabase
-      .from('synced_orders' as any)
-      .select('*')
-      .order('order_created_at', { ascending: false });
-    if (data) set({ orders: data as any });
   },
 
   fetchSyncedProducts: async () => {
     const { data } = await supabase
-      .from('synced_products' as any)
+      .from('synced_products')
       .select('*')
       .order('name');
     if (data) set({ products: data as any });
   },
 
-  fetchSyncedDeliveryPrices: async () => {
+  fetchSyncedDailyStats: async () => {
     const { data } = await supabase
-      .from('synced_delivery_prices' as any)
+      .from('synced_daily_stats' as any)
       .select('*')
-      .order('wilaya_name');
-    if (data) set({ deliveryPrices: data as any });
+      .order('stat_date', { ascending: false });
+    if (data) set({ dailyStats: data as any });
   },
 
   fetchAllSyncedData: async () => {
     set({ loading: true });
     await Promise.all([
-      get().fetchSyncedOrders(),
       get().fetchSyncedProducts(),
-      get().fetchSyncedDeliveryPrices(),
+      get().fetchSyncedDailyStats(),
     ]);
     set({ loading: false });
   },
