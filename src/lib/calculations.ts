@@ -7,6 +7,7 @@ export function calculateAnalysis(input: ProductInput, settings: GlobalSettings)
   const returnedOrders = input.confirmedOrders - input.deliveredOrders;
   const returnExpenses = returnedOrders * settings.returnCost;
   const operationExpenses = input.deliveredOrders * settings.operationCostPerOrder;
+  // deliveryDiscountExpenses is for display only — already included in confirmationAndDeliveryExpenses
   const deliveryDiscountExpenses = input.deliveryDiscount * input.deliveredOrders;
   const confirmationAndDeliveryExpenses = (settings.confirmationCost + input.deliveryDiscount + input.packagingCost) * input.deliveredOrders;
   const totalExpenses = adSpendDZD + returnExpenses + operationExpenses + confirmationAndDeliveryExpenses;
