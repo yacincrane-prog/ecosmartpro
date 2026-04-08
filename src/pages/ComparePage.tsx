@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, aggregatePeriods } from '@/lib/calculations';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
 // Determine which value is best/worst for a given metric

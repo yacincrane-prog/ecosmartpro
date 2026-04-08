@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import ArchiveSkeleton from '@/components/skeletons/ArchiveSkeleton';
 import { toast } from 'sonner';
 import {
   AlertDialog,
