@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Trash2, RotateCcw, Image, Link, Video, DollarSign, FlaskConical, Star, X, ExternalLink, Upload, Loader2 } from 'lucide-react';
+import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
 
 export default function TestingLab() {
   const { products, loading, fetchTestProducts, addTestProduct, trashProduct, restoreProduct, deleteProductPermanently, addCompetitor, deleteCompetitor, saveScore } = useTestLabStore();

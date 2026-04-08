@@ -7,6 +7,7 @@ import {
   DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save, Trash2, ArrowUpDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
