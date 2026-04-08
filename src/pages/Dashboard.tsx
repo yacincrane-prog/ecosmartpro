@@ -1,15 +1,40 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, periodToProductInput } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
 import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+
+const getDatePresets = () => {
+  const today = new Date();
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+  const sub = (days: number) => { const d = new Date(today); d.setDate(d.getDate() - days); return fmt(d); };
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+  return [
+    { label: '7 أيام', from: sub(7), to: fmt(today) },
+    { label: '30 يوم', from: sub(30), to: fmt(today) },
+    { label: 'هذا الشهر', from: fmt(startOfMonth), to: fmt(today) },
+    { label: 'الشهر الماضي', from: fmt(startOfLastMonth), to: fmt(endOfLastMonth) },
+    { label: 'الكل', from: '', to: '' },
+  ];
+};
 
 export default function Dashboard() {
   const { products, settings, loading } = useAppStore();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [activePreset, setActivePreset] = useState('الكل');
+
+  const presets = useMemo(() => getDatePresets(), []);
+
+  const applyPreset = useCallback((preset: { label: string; from: string; to: string }) => {
+    setDateFrom(preset.from);
+    setDateTo(preset.to);
+    setActivePreset(preset.label);
+  }, []);
 
   const analyses = useMemo(() => {
     // Flatten all periods across products
@@ -67,17 +92,32 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">لوحة القيادة</h2>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">من</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold">لوحة القيادة</h2>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">من</label>
+              <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setActivePreset(''); }} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">إلى</label>
+              <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setActivePreset(''); }} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">إلى</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
-          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {presets.map((p) => (
+            <Button
+              key={p.label}
+              variant={activePreset === p.label ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs h-7 px-3"
+              onClick={() => applyPreset(p)}
+            >
+              {p.label}
+            </Button>
+          ))}
         </div>
       </div>
 

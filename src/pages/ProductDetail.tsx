@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, periodToProductInput, aggregatePeriods } from '@/lib/calculations';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export default function ProductDetail() {
   const [form, setForm] = useState<any>(currentPeriod || {});
 
   // Update form when period changes
-  useMemo(() => {
+  useEffect(() => {
     if (currentPeriod) {
       setForm(currentPeriod);
     }

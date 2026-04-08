@@ -144,7 +144,7 @@ export default function SettingsPage() {
             <li>أنشئ رمز API أعلاه</li>
             <li>افتح إعدادات EcoSmart</li>
             <li>الصق الرمز في خانة "API Token"</li>
-            <li>أضف رابط المنصة: <code className="bg-background px-1 rounded">https://dqszicdrfcmwkutviayw.supabase.co/functions/v1/receive-orders</code></li>
+            <li>أضف رابط المنصة: <code className="bg-background px-1 rounded">{`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-orders`}</code></li>
             <li>اختبر الاتصال</li>
           </ol>
         </div>
