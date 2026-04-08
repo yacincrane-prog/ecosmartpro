@@ -257,10 +257,15 @@ export default function SyncedDataPage() {
       {/* Sync banner */}
       <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
         <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-        <span className="text-sm text-emerald-400">
-          آخر مزامنة: {lastSync ? new Date(lastSync).toLocaleString('ar-DZ') : '—'}
-        </span>
-        <Button variant="ghost" size="icon" className="mr-auto" onClick={() => fetchAllSyncedData()}>
+        <div className="flex-1">
+          <span className="text-sm text-emerald-400">
+            آخر مزامنة: {lastSync ? new Date(lastSync).toLocaleString('ar-DZ') : '—'}
+          </span>
+          <span className="text-xs text-muted-foreground block">
+            {products.length} منتج · {uniqueSyncDays} يوم
+          </span>
+        </div>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => fetchAllSyncedData()}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -350,14 +355,16 @@ export default function SyncedDataPage() {
         <>
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground">الأداء</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard label="الطلبات المنشأة" value={totals.created} />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <StatCard label="المنشأة" value={totals.created} />
               <StatCard label="المؤكدة" value={totals.confirmed} />
+              <StatCard label="الملغاة" value={totals.cancelled} variant="warning" />
               <StatCard label="المسلمة" value={totals.delivered} variant="profit" />
               <StatCard label="المرتجعة" value={totals.returned} variant="loss" />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <StatCard label="نسبة التأكيد" value={totalConfirmationRate} suffix="%" variant={totalConfirmationRate >= 50 ? 'profit' : 'warning'} />
+              <StatCard label="نسبة الإلغاء" value={totalCancellationRate} suffix="%" variant={totalCancellationRate <= 10 ? 'profit' : 'loss'} />
               <StatCard label="نسبة التوصيل" value={totalDeliveryRate} suffix="%" variant={totalDeliveryRate >= 60 ? 'profit' : 'loss'} />
             </div>
           </div>
