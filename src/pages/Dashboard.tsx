@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign } f
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
+import DatePickerField from '@/components/ui/DatePickerField';
 
 const getDatePresets = () => {
   const today = new Date();
@@ -93,11 +94,11 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground">من</label>
-              <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setActivePreset(''); }} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+              <DatePickerField value={dateFrom} onChange={v => { setDateFrom(v); setActivePreset(''); }} className="w-[160px]" />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground">إلى</label>
-              <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setActivePreset(''); }} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+              <DatePickerField value={dateTo} onChange={v => { setDateTo(v); setActivePreset(''); }} className="w-[160px]" />
             </div>
           </div>
         </div>

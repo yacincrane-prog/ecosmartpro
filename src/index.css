@@ -15,8 +15,8 @@
     --popover: 228 14% 14%;
     --popover-foreground: 210 20% 92%;
 
-    --primary: 160 84% 39%;
-    --primary-foreground: 228 15% 8%;
+    --primary: 25 95% 53%;
+    --primary-foreground: 0 0% 100%;
 
     --secondary: 228 12% 18%;
     --secondary-foreground: 210 20% 85%;
@@ -41,20 +41,20 @@
 
     --border: 228 10% 18%;
     --input: 228 10% 16%;
-    --ring: 160 84% 39%;
+    --ring: 25 95% 53%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 228 14% 10%;
     --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 160 84% 39%;
-    --sidebar-primary-foreground: 228 15% 8%;
+    --sidebar-primary: 25 95% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 228 12% 16%;
     --sidebar-accent-foreground: 210 20% 90%;
     --sidebar-border: 228 10% 18%;
-    --sidebar-ring: 160 84% 39%;
+    --sidebar-ring: 25 95% 53%;
 
-    --chart-1: 160 84% 39%;
+    --chart-1: 25 95% 53%;
     --chart-2: 200 70% 50%;
     --chart-3: 45 93% 47%;
     --chart-4: 280 65% 60%;
@@ -86,7 +86,7 @@
   }
 
   .gradient-text {
-    @apply bg-gradient-to-l from-primary to-emerald-400 bg-clip-text text-transparent;
+    @apply bg-gradient-to-l from-primary to-amber-400 bg-clip-text text-transparent;
   }
 
   .input-field {

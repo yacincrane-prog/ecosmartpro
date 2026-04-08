@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import DatePickerField from '@/components/ui/DatePickerField';
 import { useAppStore } from '@/store/useAppStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -233,16 +234,11 @@ export default function AddProduct() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label className="text-xs text-muted-foreground mb-1.5 block">من تاريخ</Label>
-              <Input type="date" value={form.dateFrom} onChange={e => handleChange('dateFrom', e.target.value)} className="input-field" />
+              <DatePickerField value={form.dateFrom} onChange={v => handleChange('dateFrom', v)} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground mb-1.5 block">إلى تاريخ</Label>
-              <Input
-                type="date"
-                value={form.dateTo}
-                onChange={e => handleChange('dateTo', e.target.value)}
-                className={`input-field ${errors.dateTo ? 'border-destructive' : ''}`}
-              />
+              <DatePickerField value={form.dateTo} onChange={v => handleChange('dateTo', v)} error={!!errors.dateTo} />
               {errors.dateTo && <p className="text-xs text-destructive mt-1">{errors.dateTo}</p>}
             </div>
           </div>
