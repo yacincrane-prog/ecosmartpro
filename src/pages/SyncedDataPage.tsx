@@ -58,8 +58,8 @@ interface ProductStat {
 type SortOption = 'default' | 'profit-desc' | 'profit-asc' | 'delivery-desc';
 
 export default function SyncedDataPage() {
-  const { products, dailyStats, manualInputs, loading, fetchAllSyncedData, saveManualInput, deleteSyncedProduct } = useSyncStore();
-  const { settings } = useAppStore();
+  const { products, dailyStats, manualInputs, loading, fetchAllSyncedData, saveManualInput, deleteSyncedProduct, exportToArchive } = useSyncStore();
+  const { settings, fetchProducts } = useAppStore();
   const navigate = useNavigate();
 
   const [dateFrom, setDateFrom] = useState('');
@@ -67,7 +67,30 @@ export default function SyncedDataPage() {
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [archiveDialog, setArchiveDialog] = useState<{ open: boolean; productName: string; exporting: boolean }>({ open: false, productName: '', exporting: false });
 
+  const handleExportToArchive = async (productName: string) => {
+    setArchiveDialog(prev => ({ ...prev, exporting: true }));
+    const result = await exportToArchive(productName, settings);
+    setArchiveDialog({ open: false, productName: '', exporting: false });
+    
+    if (result) {
+      await fetchProducts();
+      toast.success(
+        result.isExisting 
+          ? `تم إضافة فترة جديدة لـ "${productName}" في الأرشيف`
+          : `تم نقل "${productName}" إلى الأرشيف بنجاح`,
+        {
+          action: {
+            label: 'عرض في الأرشيف',
+            onClick: () => navigate(`/product/${result.productId}`),
+          },
+        }
+      );
+    } else {
+      toast.error('حدث خطأ أثناء النقل إلى الأرشيف');
+    }
+  };
   useEffect(() => {
     fetchAllSyncedData();
   }, []);
