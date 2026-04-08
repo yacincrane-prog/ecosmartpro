@@ -7,7 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import StatCard from '@/components/StatCard';
 import { toast } from 'sonner';
-import { ArrowRight, Loader2, Calendar } from 'lucide-react';
+import { ArrowRight, Loader2, Calendar, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -20,12 +21,13 @@ export default function ProductDetail() {
   const [editingName, setEditingName] = useState(false);
   const [nameForm, setNameForm] = useState(product?.name || '');
   const [saving, setSaving] = useState(false);
+  const [expensesOpen, setExpensesOpen] = useState(false);
+  const [ratiosOpen, setRatiosOpen] = useState(false);
 
   const currentPeriod = product?.periods.find(p => p.id === selectedPeriodId);
 
   const [form, setForm] = useState<any>(currentPeriod || {});
 
-  // Update form when period changes
   useEffect(() => {
     if (currentPeriod) {
       setForm(currentPeriod);
@@ -96,23 +98,29 @@ export default function ProductDetail() {
     { key: 'confirmedOrders', label: 'طلبات مؤكدة' },
     { key: 'deliveredOrders', label: 'طلبات واصلة' },
     { key: 'adSpendUSD', label: 'مصاريف إعلان ($)' },
-    { key: 'deliveryDiscount', label: 'تخفيض توصيل' },
+    { key: 'deliveryDiscount', label: 'تخفيض توصيل / طلب' },
     { key: 'packagingCost', label: 'تكلفة تغليف' },
   ];
 
-  const calculatedFields = [
+  // Summary section (always visible)
+  const summaryFields = [
+    { label: 'الفائدة الصافية', value: analysis.netProfit, suffix: 'د.ج', variant: analysis.netProfit >= 0 ? 'profit' : 'loss' as const },
+    { label: 'فائدة الوحدة الصافية', value: analysis.netProfitPerUnit, suffix: 'د.ج', variant: analysis.netProfitPerUnit >= 0 ? 'profit' : 'loss' as const },
     { label: 'فائدة الوحدة', value: analysis.unitProfit, suffix: 'د.ج' },
     { label: 'الفائدة بدون مصاريف', value: analysis.grossProfitNoExpenses, suffix: 'د.ج' },
+  ];
+
+  // Expenses section (collapsible)
+  const expenseFields = [
     { label: 'مصاريف الإعلان (د.ج)', value: analysis.adSpendDZD, suffix: 'د.ج' },
     { label: 'الطلبات المسترجعة', value: analysis.returnedOrders, suffix: '' },
     { label: 'مصاريف المسترجعات', value: analysis.returnExpenses, suffix: 'د.ج' },
     { label: 'مصاريف التشغيل', value: analysis.operationExpenses, suffix: 'د.ج' },
     { label: 'مصاريف التأكيد والتوصيل', value: analysis.confirmationAndDeliveryExpenses, suffix: 'د.ج' },
     { label: 'إجمالي المصاريف', value: analysis.totalExpenses, suffix: 'د.ج' },
-    { label: 'الفائدة الصافية', value: analysis.netProfit, suffix: 'د.ج', variant: analysis.netProfit >= 0 ? 'profit' : 'loss' as const },
-    { label: 'فائدة الوحدة الصافية', value: analysis.netProfitPerUnit, suffix: 'د.ج', variant: analysis.netProfitPerUnit >= 0 ? 'profit' : 'loss' as const },
   ];
 
+  // Ratios section (collapsible)
   const ratios = [
     { label: 'نسبة التأكيد', value: analysis.confirmationRate, suffix: '%' },
     { label: 'نسبة التوصيل/التأكيد', value: analysis.deliveryToConfirmationRate, suffix: '%' },
@@ -136,7 +144,13 @@ export default function ProductDetail() {
             <Button size="sm" variant="ghost" onClick={() => setEditingName(false)}>إلغاء</Button>
           </div>
         ) : (
-          <h2 className="text-2xl font-bold cursor-pointer" onClick={() => setEditingName(true)}>{product.name}</h2>
+          <button
+            className="flex items-center gap-2 group"
+            onClick={() => setEditingName(true)}
+          >
+            <h2 className="text-2xl font-bold">{product.name}</h2>
+            <Pencil className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
         )}
         {selectedPeriodId !== 'all' && (
           <Button variant="outline" size="sm" onClick={() => { setEditing(!editing); if (!editing && currentPeriod) setForm(currentPeriod); }}>
@@ -174,7 +188,7 @@ export default function ProductDetail() {
             {inputFields.map((f) => (
               <div key={f.key}>
                 <Label className="text-xs text-muted-foreground mb-1 block">{f.label}</Label>
-                <Input type="number" value={(form as any)[f.key]} onChange={(e) => handleChange(f.key, e.target.value)} className="input-field" step="any" />
+                <Input type="number" value={(form as any)[f.key]} onChange={(e) => handleChange(f.key, e.target.value)} className="input-field" step="any" min="0" />
               </div>
             ))}
             <div>
@@ -193,23 +207,49 @@ export default function ProductDetail() {
         </div>
       )}
 
+      {/* Summary - always visible */}
       <div>
-        <h3 className="text-sm font-semibold text-muted-foreground mb-3">الحسابات</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {calculatedFields.map((f) => (
+        <h3 className="text-sm font-semibold text-muted-foreground mb-3">الملخص</h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {summaryFields.map((f) => (
             <StatCard key={f.label} label={f.label} value={f.value} suffix={f.suffix} variant={(f as any).variant || 'default'} />
           ))}
         </div>
       </div>
 
-      <div>
-        <h3 className="text-sm font-semibold text-muted-foreground mb-3">النسب</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {ratios.map((f) => (
-            <StatCard key={f.label} label={f.label} value={f.value} suffix={f.suffix} variant={(f as any).variant || 'default'} />
-          ))}
-        </div>
-      </div>
+      {/* Expenses - collapsible */}
+      <Collapsible open={expensesOpen} onOpenChange={setExpensesOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center justify-between w-full text-sm font-semibold text-muted-foreground mb-3 hover:text-foreground transition-colors">
+            <span>تفاصيل المصاريف</span>
+            {expensesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {expenseFields.map((f) => (
+              <StatCard key={f.label} label={f.label} value={f.value} suffix={f.suffix} />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Ratios - collapsible */}
+      <Collapsible open={ratiosOpen} onOpenChange={setRatiosOpen}>
+        <CollapsibleTrigger asChild>
+          <button className="flex items-center justify-between w-full text-sm font-semibold text-muted-foreground mb-3 hover:text-foreground transition-colors">
+            <span>النسب والمؤشرات</span>
+            {ratiosOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {ratios.map((f) => (
+              <StatCard key={f.label} label={f.label} value={f.value} suffix={f.suffix} variant={(f as any).variant || 'default'} />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {analysis.alerts.length > 0 && (
         <div className="stat-card space-y-2">

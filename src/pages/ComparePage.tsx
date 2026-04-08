@@ -1,10 +1,31 @@
 import { useMemo, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, aggregatePeriods } from '@/lib/calculations';
-import StatCard from '@/components/StatCard';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+
+// Determine which value is best/worst for a given metric
+const higherIsBetter = ['netProfit', 'confirmationRate', 'deliveryToReceivedRate', 'netProfitPerUnit'];
+const lowerIsBetter = ['returnRate', 'totalExpenses', 'costPerDeliveredOrder'];
+
+function getBestWorst(values: number[], key: string) {
+  if (values.length < 2) return { bestIdx: -1, worstIdx: -1 };
+  const isHigherBetter = higherIsBetter.includes(key);
+  let bestIdx = 0, worstIdx = 0;
+  for (let i = 1; i < values.length; i++) {
+    if (isHigherBetter) {
+      if (values[i] > values[bestIdx]) bestIdx = i;
+      if (values[i] < values[worstIdx]) worstIdx = i;
+    } else {
+      if (values[i] < values[bestIdx]) bestIdx = i;
+      if (values[i] > values[worstIdx]) worstIdx = i;
+    }
+  }
+  // Don't highlight if all values are equal
+  if (values[bestIdx] === values[worstIdx]) return { bestIdx: -1, worstIdx: -1 };
+  return { bestIdx, worstIdx };
+}
 
 export default function ComparePage() {
   const { products, settings, loading } = useAppStore();
@@ -47,6 +68,16 @@ export default function ComparePage() {
 
   const COLORS = ['hsl(160, 84%, 39%)', 'hsl(200, 70%, 50%)', 'hsl(45, 93%, 47%)', 'hsl(280, 65%, 60%)'];
 
+  const tableRows = [
+    { label: 'الفائدة الصافية', key: 'netProfit', suffix: 'د.ج' },
+    { label: 'نسبة التأكيد', key: 'confirmationRate', suffix: '%' },
+    { label: 'نسبة التوصيل', key: 'deliveryToReceivedRate', suffix: '%' },
+    { label: 'نسبة الإرجاع', key: 'returnRate', suffix: '%' },
+    { label: 'فائدة الوحدة الصافية', key: 'netProfitPerUnit', suffix: 'د.ج' },
+    { label: 'إجمالي المصاريف', key: 'totalExpenses', suffix: 'د.ج' },
+    { label: 'كوست طلبات واصلة', key: 'costPerDeliveredOrder', suffix: 'د.ج' },
+  ];
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center gap-3">
@@ -86,22 +117,25 @@ export default function ComparePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {[
-                  { label: 'الفائدة الصافية', key: 'netProfit', suffix: 'د.ج' },
-                  { label: 'نسبة التأكيد', key: 'confirmationRate', suffix: '%' },
-                  { label: 'نسبة التوصيل', key: 'deliveryToReceivedRate', suffix: '%' },
-                  { label: 'نسبة الإرجاع', key: 'returnRate', suffix: '%' },
-                  { label: 'فائدة الوحدة الصافية', key: 'netProfitPerUnit', suffix: 'د.ج' },
-                  { label: 'إجمالي المصاريف', key: 'totalExpenses', suffix: 'د.ج' },
-                  { label: 'كوست طلبات واصلة', key: 'costPerDeliveredOrder', suffix: 'د.ج' },
-                ].map(row => (
-                  <tr key={row.key}>
-                    <td className="py-2 text-muted-foreground">{row.label}</td>
-                    {analyses.map(a => (
-                      <td key={a.id} className="py-2 font-medium">{(a as any)[row.key].toFixed(2)} {row.suffix}</td>
-                    ))}
-                  </tr>
-                ))}
+                {tableRows.map(row => {
+                  const values = analyses.map(a => (a as any)[row.key] as number);
+                  const { bestIdx, worstIdx } = getBestWorst(values, row.key);
+                  return (
+                    <tr key={row.key}>
+                      <td className="py-2 text-muted-foreground">{row.label}</td>
+                      {analyses.map((a, idx) => {
+                        let colorClass = '';
+                        if (idx === bestIdx) colorClass = 'text-profit font-bold';
+                        else if (idx === worstIdx) colorClass = 'text-loss font-bold';
+                        return (
+                          <td key={a.id} className={`py-2 font-medium ${colorClass}`}>
+                            {(a as any)[row.key].toFixed(2)} {row.suffix}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -112,7 +146,7 @@ export default function ComparePage() {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={barData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(228, 10%, 18%)" />
-                  <XAxis dataKey="name" stroke="hsl(215, 12%, 55%)" fontSize={11} />
+                  <XAxis dataKey="name" stroke="hsl(215, 12%, 55%)" fontSize={11} angle={-30} textAnchor="end" height={60} />
                   <YAxis stroke="hsl(215, 12%, 55%)" fontSize={11} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(228, 14%, 12%)', border: '1px solid hsl(228, 10%, 18%)', borderRadius: '8px', color: 'hsl(210, 20%, 92%)' }} />
                   <Legend />
