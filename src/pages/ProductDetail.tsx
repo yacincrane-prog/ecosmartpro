@@ -26,7 +26,7 @@ export default function ProductDetail() {
   const [form, setForm] = useState<any>(currentPeriod || {});
 
   // Update form when period changes
-  useMemo(() => {
+  useEffect(() => {
     if (currentPeriod) {
       setForm(currentPeriod);
     }

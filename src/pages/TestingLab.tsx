@@ -34,7 +34,7 @@ export default function TestingLab() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <FlaskConical className="h-7 w-7 text-primary" />
-          <h1 className="text-2xl font-bold gradient-text">Product Testing Lab</h1>
+          <h1 className="text-2xl font-bold gradient-text">مختبر المنتجات</h1>
         </div>
         <AddProductDialog onAdd={addTestProduct} />
       </div>
