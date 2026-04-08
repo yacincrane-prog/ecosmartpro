@@ -200,15 +200,22 @@ export default function SyncedDataPage() {
         confirmed: acc.confirmed + p.confirmed,
         delivered: acc.delivered + p.delivered,
         returned: acc.returned + p.returned,
+        cancelled: acc.cancelled + p.cancelled,
         revenue: acc.revenue + p.revenue,
         profit: acc.profit + p.profit,
       }),
-      { created: 0, confirmed: 0, delivered: 0, returned: 0, revenue: 0, profit: 0 }
+      { created: 0, confirmed: 0, delivered: 0, returned: 0, cancelled: 0, revenue: 0, profit: 0 }
     );
   }, [productStats]);
 
   const totalConfirmationRate = totals.created > 0 ? (totals.confirmed / totals.created) * 100 : 0;
+  const totalCancellationRate = totals.created > 0 ? (totals.cancelled / totals.created) * 100 : 0;
   const totalDeliveryRate = (totals.delivered + totals.returned) > 0 ? (totals.delivered / (totals.delivered + totals.returned)) * 100 : 0;
+
+  const uniqueSyncDays = useMemo(() => {
+    const dates = new Set(dailyStats.map(s => s.stat_date));
+    return dates.size;
+  }, [dailyStats]);
 
   // Smart summary - always shown
   const summary = useMemo(() => {
