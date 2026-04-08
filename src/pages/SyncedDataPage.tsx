@@ -443,7 +443,7 @@ export default function SyncedDataPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-muted-foreground">
-                      <span>{p.created}↗ {p.confirmed}✓ {p.delivered}📦 {p.returned}↩</span>
+                      <span>{p.created}↗ {p.confirmed}✓ {p.cancelled > 0 ? <span className="text-orange-400">{p.cancelled}✕</span> : null} {p.delivered}📦 {p.returned}↩</span>
                       {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </div>
                   </div>
@@ -484,10 +484,12 @@ export default function SyncedDataPage() {
                 </div>
 
                 {/* Read-only stats - merged into one grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
+                  <ReadOnlyField label="نسبة الإلغاء" value={`${p.cancellationRate.toFixed(1)}%`} />
                   <ReadOnlyField label="المنشأة" value={p.created} />
                   <ReadOnlyField label="المؤكدة" value={p.confirmed} />
+                  <ReadOnlyField label="الملغاة" value={p.cancelled} />
                   <ReadOnlyField label="المسلمة" value={p.delivered} />
                   <ReadOnlyField label="المرتجعة" value={p.returned} />
                 </div>
