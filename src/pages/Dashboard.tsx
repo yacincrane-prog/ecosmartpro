@@ -2,7 +2,8 @@ import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, periodToProductInput } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
-import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign } from 'lucide-react';
+import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 
@@ -82,13 +83,7 @@ export default function Dashboard() {
 
   const COLORS = ['hsl(160, 84%, 39%)', 'hsl(0, 72%, 51%)', 'hsl(228, 10%, 30%)'];
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
   return (
     <div className="space-y-6">

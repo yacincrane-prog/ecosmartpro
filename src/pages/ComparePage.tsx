@@ -46,13 +46,7 @@ export default function ComparePage() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return <GenericPageSkeleton />;
 
   const barData = analyses.map(a => ({
     name: `${a.name.substring(0, 12)}`,
