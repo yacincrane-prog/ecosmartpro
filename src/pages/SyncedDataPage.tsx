@@ -40,7 +40,9 @@ interface ProductStat {
   confirmed: number;
   delivered: number;
   returned: number;
+  cancelled: number;
   confirmationRate: number;
+  cancellationRate: number;
   deliveryRate: number;
   revenue: number;
   profit: number;
@@ -123,7 +125,7 @@ export default function SyncedDataPage() {
 
   const productStats: ProductStat[] = useMemo(() => {
     const stats = displayProducts.map(product => {
-      let created: number, confirmed: number, delivered: number, returned: number;
+      let created: number, confirmed: number, delivered: number, returned: number, cancelled: number;
 
       if (dateFrom && dateTo) {
         const filtered = dailyStats.filter(s =>
@@ -135,14 +137,17 @@ export default function SyncedDataPage() {
         confirmed = filtered.reduce((s, d) => s + d.confirmed, 0);
         delivered = filtered.reduce((s, d) => s + d.delivered, 0);
         returned = filtered.reduce((s, d) => s + d.returned, 0);
+        cancelled = filtered.reduce((s, d) => s + (d.cancelled || 0), 0);
       } else {
         created = product.total_created;
         confirmed = product.total_confirmed;
         delivered = product.total_delivered;
         returned = product.total_returned;
+        cancelled = product.total_cancelled || 0;
       }
 
       const confirmationRate = created > 0 ? (confirmed / created) * 100 : 0;
+      const cancellationRate = created > 0 ? (cancelled / created) * 100 : 0;
       const deliveryRate = (delivered + returned) > 0 ? (delivered / (delivered + returned)) * 100 : 0;
 
       const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
@@ -171,8 +176,8 @@ export default function SyncedDataPage() {
 
       return {
         product,
-        created, confirmed, delivered, returned,
-        confirmationRate, deliveryRate,
+        created, confirmed, delivered, returned, cancelled,
+        confirmationRate, cancellationRate, deliveryRate,
         revenue, profit, totalCost,
         adSpendDZD, purchaseCost, deliveryCost, returnCost,
         confirmationCost, operationCost, packagingTotal,
