@@ -172,7 +172,7 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(228, 10%, 18%)" />
-                  <XAxis dataKey="name" stroke="hsl(215, 12%, 55%)" fontSize={12} />
+                  <XAxis dataKey="name" stroke="hsl(215, 12%, 55%)" fontSize={11} angle={-30} textAnchor="end" height={60} />
                   <YAxis stroke="hsl(215, 12%, 55%)" fontSize={12} />
                   <Tooltip contentStyle={{ backgroundColor: 'hsl(228, 14%, 12%)', border: '1px solid hsl(228, 10%, 18%)', borderRadius: '8px', color: 'hsl(210, 20%, 92%)' }} />
                   <Bar dataKey="الفائدة الصافية" fill="hsl(160, 84%, 39%)" radius={[4, 4, 0, 0]} />
