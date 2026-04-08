@@ -1,115 +1,80 @@
 
 
-# تحليل شامل — صفحة إضافة منتج جديد (AddProduct)
+# استبدال التقويمات + تحسين الهوية البصرية لتتطابق مع EcoSmart
 
 ---
 
-## الأخطاء المكتشفة
+## التحليل
 
-### 1. لا يوجد تحقق من صحة البيانات (Critical — Logic)
+من الصور المرفوعة، هوية EcoSmart تعتمد على:
+- **اللون البرتقالي** كلون أساسي (تقريباً `hsl(25, 95%, 53%)`)
+- **خلفية داكنة** مع بطاقات بحدود خفيفة
+- **شريط علوي برتقالي** مع تبويبات (التأكيد / التتبع / stats)
+- **Bottom tab bar** بـ 5 تبويبات مع أيقونات + نص
+- **تقويم مخصص** مع أزرار presets (Aujourd'hui / Hier / Semaine / Mois) وزر تأكيد برتقالي
+- **بطاقات بيضاء/فاتحة** على خلفية داكنة مع حدود ذهبية/برتقالية للعناصر المهمة
 
-**المشكلة:** كل الحقول الرقمية تُحوّل بـ `Number(x) || 0` — أي أن المستخدم يمكنه إرسال نموذج بكل القيم = 0 (سعر بيع 0، طلبات 0). هذا يُنشئ منتج بدون بيانات مفيدة ويُفسد التحليلات.
-
-**الحل:**
-- إلزام `sellingPrice > 0` و `purchasePrice > 0` كحد أدنى
-- تحذير (وليس منع) إذا كانت الطلبات = 0
-- عرض رسائل خطأ واضحة تحت كل حقل
-
-### 2. لا يوجد تحقق منطقي بين الحقول (Critical — Logic)
-
-**المشكلة:** يمكن إدخال `deliveredOrders > confirmedOrders` أو `confirmedOrders > receivedOrders` — وهذا مستحيل واقعياً. محرك الحسابات يحسب `returnedOrders = confirmed - delivered`، فإذا كان `delivered > confirmed` يُصبح المرتجع سالباً → حسابات خاطئة.
-
-**الحل:**
-- تحقق: `receivedOrders >= confirmedOrders >= deliveredOrders`
-- عرض تحذير فوري عند الإدخال إذا كانت العلاقة مخالفة
-- منع الإرسال إذا كان التسلسل خاطئ
-
-### 3. `dateTo` يمكن أن يكون قبل `dateFrom` (Medium — Logic)
-
-**المشكلة:** لا يوجد تحقق من أن تاريخ النهاية بعد تاريخ البداية. كلاهما يبدأ بتاريخ اليوم مما يعني فترة = يوم واحد دائماً كافتراضي.
-
-**الحل:** تحقق `dateTo >= dateFrom` عند الإرسال + تنبيه
-
-### 4. `deliveryDiscount` غامض المعنى (Medium — UX)
-
-**المشكلة:** في `calculations.ts` السطر 10-11:
-```
-deliveryDiscountExpenses = deliveryDiscount × deliveredOrders
-confirmationAndDeliveryExpenses = (confirmationCost + deliveryDiscount + packagingCost) × deliveredOrders
-```
-أي أن `deliveryDiscount` هنا هو **لكل طلب**. لكن في صفحة المزامنة EcoSmart، التخفيض يأتي **إجمالي** ويُقسم على المسلّمة. الـ placeholder يقول "تخفيض التوصيل (د.ج)" بدون توضيح هل هو لكل طلب أم إجمالي.
-
-**الحل:** تغيير الـ label إلى "تخفيض التوصيل / طلب (د.ج)" وإضافة tooltip يشرح
-
-### 5. تكرار `deliveryDiscount` في الحسابات (Critical — Calculation)
-
-**المشكلة:** في `calculations.ts`:
-- سطر 10: `deliveryDiscountExpenses = deliveryDiscount × deliveredOrders`
-- سطر 11: `confirmationAndDeliveryExpenses = (confirmationCost + deliveryDiscount + packagingCost) × deliveredOrders`
-- سطر 12: `totalExpenses = adSpendDZD + returnExpenses + operationExpenses + confirmationAndDeliveryExpenses`
-
-`deliveryDiscount` يُحسب مرتين! مرة في `deliveryDiscountExpenses` (لا يُستخدم في totalExpenses) ومرة داخل `confirmationAndDeliveryExpenses`. الحساب الفعلي سليم لأن `deliveryDiscountExpenses` لا يدخل في `totalExpenses`، لكن وجوده كمتغير منفصل مُضلّل — يبدو وكأنه محسوب مرتين.
-
-**الحل:** حذف `deliveryDiscountExpenses` كمتغير منفصل أو توضيح أنه للعرض فقط
-
-### 6. لا يوجد معاينة فورية للحسابات (High — UX)
-
-**المشكلة:** المستخدم يدخل 10 حقول ويضغط "إضافة" ثم يذهب للأرشيف ليرى النتائج. لا يعرف الربح المتوقع قبل الحفظ.
-
-**الحل:** إضافة قسم "معاينة سريعة" أسفل النموذج يعرض:
-- الربح الصافي المتوقع
-- نسبة التأكيد
-- نسبة التوصيل
-- تنبيهات (إن وجدت)
-يتحدث تلقائياً مع كل تغيير في الحقول
-
-### 7. لا يوجد تجميع بصري للحقول (Medium — UI)
-
-**المشكلة:** 8 حقول في grid واحد بدون تقسيم منطقي. المستخدم لا يفهم العلاقة بين الحقول.
-
-**الحل:** تقسيم إلى 3 مجموعات:
-- **الأسعار:** سعر الشراء + سعر البيع
-- **الطلبات:** المستلمة + المؤكدة + الواصلة
-- **المصاريف:** مصاريف إعلان + تخفيض توصيل + تكلفة تغليف
-
-### 8. قيم سلبية مقبولة (Low — Edge Case)
-
-**المشكلة:** `type="number"` يقبل أرقام سالبة. سعر شراء = -100 أو طلبات = -5 لا معنى لهما.
-
-**الحل:** إضافة `min="0"` لكل الحقول الرقمية
+حالياً المنصة تستخدم:
+- اللون الأخضر `hsl(160, 84%, 39%)` كلون أساسي
+- `input type="date"` الأصلي في 5 صفحات (10 حقول)
+- تقويم `react-day-picker` موجود في `calendar.tsx` لكنه غير مستخدم
 
 ---
 
 ## خطة التنفيذ
 
-### Phase 1: إصلاحات في `AddProduct.tsx`
+### 1. إنشاء مكون `DatePickerField` مخصص
 
-| التغيير | التأثير |
-|---------|---------|
-| تحقق من صحة البيانات: `sellingPrice > 0`, `purchasePrice > 0` | منع بيانات فارغة |
-| تحقق منطقي: `received >= confirmed >= delivered` مع رسائل خطأ | منع حسابات خاطئة |
-| تحقق `dateTo >= dateFrom` | منع فترات مقلوبة |
-| إضافة `min="0"` لكل الحقول | منع قيم سالبة |
-| تقسيم الحقول لـ 3 مجموعات بعناوين | وضوح بصري |
-| تغيير label تخفيض التوصيل إلى "/ طلب" | إزالة الغموض |
+مكون واحد يستبدل كل `input type="date"`:
+- يستخدم `Popover` + مكون `Calendar` الموجود
+- يعرض التاريخ المختار بتنسيق عربي
+- أزرار presets (اليوم / أمس / هذا الأسبوع / هذا الشهر)
+- زر "تأكيد" برتقالي أسفل التقويم (كما في EcoSmart)
+- يقبل نفس الـ API: `value: string` (YYYY-MM-DD) و `onChange: (value: string) => void`
 
-### Phase 2: معاينة فورية في `AddProduct.tsx`
+### 2. تحديث الهوية البصرية — الألوان
 
-| التغيير | التأثير |
-|---------|---------|
-| قسم معاينة يعرض الربح + النسب تلقائياً | المستخدم يرى النتيجة قبل الحفظ |
-| تلوين (أخضر/أحمر) حسب الربح | قرار سريع |
+تغيير `index.css` CSS variables:
 
-### Phase 3: تنظيف `calculations.ts` (اختياري)
+| متغير | القيمة الحالية | القيمة الجديدة |
+|--------|---------------|---------------|
+| `--primary` | `160 84% 39%` (أخضر) | `25 95% 53%` (برتقالي EcoSmart) |
+| `--primary-foreground` | `228 15% 8%` | `0 0% 100%` (أبيض) |
+| `--ring` | `160 84% 39%` | `25 95% 53%` |
+| `--sidebar-primary` | `160 84% 39%` | `25 95% 53%` |
+| `--sidebar-ring` | `160 84% 39%` | `25 95% 53%` |
 
-| التغيير | التأثير |
-|---------|---------|
-| حذف أو توضيح `deliveryDiscountExpenses` | إزالة الالتباس |
+الألوان الدلالية (profit/loss/warning) تبقى كما هي — الأخضر للربح والأحمر للخسارة.
 
-### الملفات المتأثرة
+### 3. تحديث `gradient-text`
+
+من `from-primary to-emerald-400` إلى `from-primary to-amber-400` ليتناسب مع البرتقالي.
+
+### 4. استبدال كل `input type="date"` في 5 ملفات
+
+الملفات المتأثرة:
+- `src/pages/AddProduct.tsx` (2 حقول)
+- `src/pages/Archive.tsx` (4 حقول — في AddPeriodForm و PeriodEditForm)
+- `src/pages/ProductDetail.tsx` (2 حقول)
+- `src/pages/Dashboard.tsx` (2 حقول)
+- `src/pages/SyncedDataPage.tsx` (2 حقول)
+
+### 5. تحسينات بصرية إضافية
+
+- تحديث `chart-1` ليتوافق مع اللون البرتقالي الجديد
+- تحديث ألوان الـ bottom tab bar النشطة
+
+---
+
+## الملفات المتأثرة
 
 | ملف | تغيير |
 |-----|--------|
-| `src/pages/AddProduct.tsx` | تحقق + تجميع بصري + معاينة فورية |
-| `src/lib/calculations.ts` | تنظيف (Phase 3) |
+| `src/components/ui/DatePickerField.tsx` | **جديد** — مكون التقويم المخصص |
+| `src/index.css` | تحديث CSS variables للهوية البرتقالية |
+| `src/pages/AddProduct.tsx` | استبدال input date بـ DatePickerField |
+| `src/pages/Archive.tsx` | استبدال input date بـ DatePickerField |
+| `src/pages/ProductDetail.tsx` | استبدال input date بـ DatePickerField |
+| `src/pages/Dashboard.tsx` | استبدال input date بـ DatePickerField |
+| `src/pages/SyncedDataPage.tsx` | استبدال input date بـ DatePickerField |
 
