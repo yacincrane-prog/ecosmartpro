@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
 import { Input } from '@/components/ui/input';
+import DatePickerField from '@/components/ui/DatePickerField';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -274,11 +275,11 @@ export default function SyncedDataPage() {
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[140px]">
             <Label className="text-xs text-muted-foreground">من</Label>
-            <Input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field" />
+            <DatePickerField value={dateFrom} onChange={v => setDateFrom(v)} />
           </div>
           <div className="flex-1 min-w-[140px]">
             <Label className="text-xs text-muted-foreground">إلى</Label>
-            <Input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field" />
+            <DatePickerField value={dateTo} onChange={v => setDateTo(v)} />
           </div>
           <div className="flex-1 min-w-[140px]">
             <Label className="text-xs text-muted-foreground">المنتج</Label>

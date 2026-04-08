@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import DatePickerField from '@/components/ui/DatePickerField';
 import ArchiveSkeleton from '@/components/skeletons/ArchiveSkeleton';
 import { toast } from 'sonner';
 import {
@@ -425,11 +426,11 @@ function PeriodFormFields({ form, setForm }: { form: any; setForm: (fn: any) => 
       ))}
       <div>
         <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
-        <Input type="date" value={form.dateFrom} onChange={e => handleChange('dateFrom', e.target.value)} className="input-field h-8 text-xs" />
+        <DatePickerField value={form.dateFrom} onChange={v => handleChange('dateFrom', v)} className="h-8 text-xs" />
       </div>
       <div>
         <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
-        <Input type="date" value={form.dateTo} onChange={e => handleChange('dateTo', e.target.value)} className="input-field h-8 text-xs" />
+        <DatePickerField value={form.dateTo} onChange={v => handleChange('dateTo', v)} className="h-8 text-xs" />
       </div>
     </div>
   );

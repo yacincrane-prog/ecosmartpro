@@ -3,6 +3,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, periodToProductInput, aggregatePeriods } from '@/lib/calculations';
 import { useState, useMemo, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
+import DatePickerField from '@/components/ui/DatePickerField';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import StatCard from '@/components/StatCard';
@@ -188,11 +189,11 @@ export default function ProductDetail() {
             ))}
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">من تاريخ</Label>
-              <Input type="date" value={form.dateFrom} onChange={e => handleChange('dateFrom', e.target.value)} className="input-field" />
+              <DatePickerField value={form.dateFrom} onChange={v => handleChange('dateFrom', v)} />
             </div>
             <div>
               <Label className="text-xs text-muted-foreground mb-1 block">إلى تاريخ</Label>
-              <Input type="date" value={form.dateTo} onChange={e => handleChange('dateTo', e.target.value)} className="input-field" />
+              <DatePickerField value={form.dateTo} onChange={v => handleChange('dateTo', v)} />
             </div>
           </div>
           <Button onClick={handleSave} className="mt-4 w-full" disabled={saving}>
