@@ -425,7 +425,7 @@ function PeriodFormFields({ form, setForm }: { form: any; setForm: (fn: any) => 
       {fields.map((f) => (
         <div key={f.key}>
           <Label className="text-xs text-muted-foreground mb-1 block">{f.label}</Label>
-          <Input type="number" step="any" value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className="input-field h-8 text-xs" />
+          <Input type="number" step="any" min="0" value={form[f.key]} onChange={e => handleChange(f.key, e.target.value)} className="input-field h-8 text-xs" />
         </div>
       ))}
       <div>
