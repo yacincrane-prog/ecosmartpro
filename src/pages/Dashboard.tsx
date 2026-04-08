@@ -1,15 +1,40 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, periodToProductInput } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
 import { TrendingUp, TrendingDown, Truck, CheckCircle, RotateCcw, DollarSign, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+
+const getDatePresets = () => {
+  const today = new Date();
+  const fmt = (d: Date) => d.toISOString().split('T')[0];
+  const sub = (days: number) => { const d = new Date(today); d.setDate(d.getDate() - days); return fmt(d); };
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+  return [
+    { label: '7 أيام', from: sub(7), to: fmt(today) },
+    { label: '30 يوم', from: sub(30), to: fmt(today) },
+    { label: 'هذا الشهر', from: fmt(startOfMonth), to: fmt(today) },
+    { label: 'الشهر الماضي', from: fmt(startOfLastMonth), to: fmt(endOfLastMonth) },
+    { label: 'الكل', from: '', to: '' },
+  ];
+};
 
 export default function Dashboard() {
   const { products, settings, loading } = useAppStore();
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [activePreset, setActivePreset] = useState('الكل');
+
+  const presets = useMemo(() => getDatePresets(), []);
+
+  const applyPreset = useCallback((preset: { label: string; from: string; to: string }) => {
+    setDateFrom(preset.from);
+    setDateTo(preset.to);
+    setActivePreset(preset.label);
+  }, []);
 
   const analyses = useMemo(() => {
     // Flatten all periods across products
