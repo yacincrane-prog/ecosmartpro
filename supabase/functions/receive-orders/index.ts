@@ -88,6 +88,7 @@ Deno.serve(async (req) => {
         total_confirmed: 0,
         total_delivered: 0,
         total_returned: 0,
+        total_cancelled: 0,
         synced_at: syncedAt,
       },
       { onConflict: "user_id,name" }
@@ -113,6 +114,7 @@ Deno.serve(async (req) => {
         confirmed: Number(d.confirmed) || 0,
         delivered: Number(d.delivered) || 0,
         returned: Number(d.returned) || 0,
+        cancelled: Number(d.cancelled) || 0,
         synced_at: syncedAt,
       });
       if (!sErr) statsReceived++;
@@ -124,6 +126,7 @@ Deno.serve(async (req) => {
       const totalConfirmed = dailyStats.reduce((s: number, d: any) => s + (Number(d.confirmed) || 0), 0);
       const totalDelivered = dailyStats.reduce((s: number, d: any) => s + (Number(d.delivered) || 0), 0);
       const totalReturned = dailyStats.reduce((s: number, d: any) => s + (Number(d.returned) || 0), 0);
+      const totalCancelled = dailyStats.reduce((s: number, d: any) => s + (Number(d.cancelled) || 0), 0);
 
       await supabase
         .from("synced_products")
@@ -132,6 +135,7 @@ Deno.serve(async (req) => {
           total_confirmed: totalConfirmed,
           total_delivered: totalDelivered,
           total_returned: totalReturned,
+          total_cancelled: totalCancelled,
         })
         .eq("user_id", userId)
         .eq("name", productName);
