@@ -1,68 +1,54 @@
 
 
-# استبدال التقويمات + تحسين الهوية البصرية لتتطابق مع EcoSmart
+# تنفيذ الخطة الكاملة: cancelled + Edge Function + واجهة المستخدم
 
 ---
 
-## التحليل
+## المرحلة 1: قاعدة البيانات (Migration)
 
-من الصور المرفوعة، هوية EcoSmart تعتمد على:
-- **اللون البرتقالي** كلون أساسي (تقريباً `hsl(25, 95%, 53%)`)
-- **خلفية داكنة** مع بطاقات بحدود خفيفة
-- **شريط علوي برتقالي** مع تبويبات (التأكيد / التتبع / stats)
-- **Bottom tab bar** بـ 5 تبويبات مع أيقونات + نص
-- **تقويم مخصص** مع أزرار presets (Aujourd'hui / Hier / Semaine / Mois) وزر تأكيد برتقالي
-- **بطاقات بيضاء/فاتحة** على خلفية داكنة مع حدود ذهبية/برتقالية للعناصر المهمة
-
-حالياً المنصة تستخدم:
-- اللون الأخضر `hsl(160, 84%, 39%)` كلون أساسي
-- `input type="date"` الأصلي في 5 صفحات (10 حقول)
-- تقويم `react-day-picker` موجود في `calendar.tsx` لكنه غير مستخدم
+```sql
+ALTER TABLE synced_daily_stats ADD COLUMN cancelled integer NOT NULL DEFAULT 0;
+ALTER TABLE synced_products ADD COLUMN total_cancelled integer NOT NULL DEFAULT 0;
+```
 
 ---
 
-## خطة التنفيذ
+## المرحلة 2: تحديث Edge Function (`receive-orders/index.ts`)
 
-### 1. إنشاء مكون `DatePickerField` مخصص
+- إضافة `cancelled: Number(d.cancelled) || 0` في insert daily stats (سطر 108-117)
+- إضافة `totalCancelled` في تجميع الإجماليات وتحديث `synced_products` (سطر 122-138)
 
-مكون واحد يستبدل كل `input type="date"`:
-- يستخدم `Popover` + مكون `Calendar` الموجود
-- يعرض التاريخ المختار بتنسيق عربي
-- أزرار presets (اليوم / أمس / هذا الأسبوع / هذا الشهر)
-- زر "تأكيد" برتقالي أسفل التقويم (كما في EcoSmart)
-- يقبل نفس الـ API: `value: string` (YYYY-MM-DD) و `onChange: (value: string) => void`
+---
 
-### 2. تحديث الهوية البصرية — الألوان
+## المرحلة 3: تحديث Store (`useSyncStore.ts`)
 
-تغيير `index.css` CSS variables:
+- إضافة `cancelled` إلى `SyncedDailyStat` interface
+- إضافة `total_cancelled` إلى `SyncedProduct` interface
 
-| متغير | القيمة الحالية | القيمة الجديدة |
-|--------|---------------|---------------|
-| `--primary` | `160 84% 39%` (أخضر) | `25 95% 53%` (برتقالي EcoSmart) |
-| `--primary-foreground` | `228 15% 8%` | `0 0% 100%` (أبيض) |
-| `--ring` | `160 84% 39%` | `25 95% 53%` |
-| `--sidebar-primary` | `160 84% 39%` | `25 95% 53%` |
-| `--sidebar-ring` | `160 84% 39%` | `25 95% 53%` |
+---
 
-الألوان الدلالية (profit/loss/warning) تبقى كما هي — الأخضر للربح والأحمر للخسارة.
+## المرحلة 4: تحديث واجهة المستخدم (`SyncedDataPage.tsx`)
 
-### 3. تحديث `gradient-text`
+### 4.1 — إضافة `cancelled` إلى `ProductStat` interface والحسابات
+- حساب `cancelled` من daily stats المفلترة أو من `product.total_cancelled`
+- إضافة `cancellationRate = cancelled / created * 100`
 
-من `from-primary to-emerald-400` إلى `from-primary to-amber-400` ليتناسب مع البرتقالي.
+### 4.2 — تحسين Header البطاقة (سطر 427)
+- إضافة عدد الملغاة: `{p.cancelled}✕` بلون أحمر/برتقالي بجانب الأرقام الموجودة
 
-### 4. استبدال كل `input type="date"` في 5 ملفات
+### 4.3 — إضافة "الملغاة" إلى grid الإحصائيات (سطر 468-474)
+- إضافة `ReadOnlyField` للملغاة ونسبة الإلغاء
+- تحويل grid إلى `grid-cols-2 sm:grid-cols-6` لاستيعاب الحقلين الجديدين
 
-الملفات المتأثرة:
-- `src/pages/AddProduct.tsx` (2 حقول)
-- `src/pages/Archive.tsx` (4 حقول — في AddPeriodForm و PeriodEditForm)
-- `src/pages/ProductDetail.tsx` (2 حقول)
-- `src/pages/Dashboard.tsx` (2 حقول)
-- `src/pages/SyncedDataPage.tsx` (2 حقول)
+### 4.4 — KPI Totals (سطر 337-366)
+- إضافة `StatCard` للملغاة في grid الأداء العلوي
+- إضافة بطاقة نسبة الإلغاء بلون تحذيري
 
-### 5. تحسينات بصرية إضافية
+### 4.5 — الملخص الذكي (سطر 209-222)
+- تحديث `totals` لتشمل `cancelled`
 
-- تحديث `chart-1` ليتوافق مع اللون البرتقالي الجديد
-- تحديث ألوان الـ bottom tab bar النشطة
+### 4.6 — شريط المزامنة (سطر 246-254)
+- إضافة عدد المنتجات والأيام المزامنة: `{products.length} منتج · {uniqueDays} يوم`
 
 ---
 
@@ -70,11 +56,8 @@
 
 | ملف | تغيير |
 |-----|--------|
-| `src/components/ui/DatePickerField.tsx` | **جديد** — مكون التقويم المخصص |
-| `src/index.css` | تحديث CSS variables للهوية البرتقالية |
-| `src/pages/AddProduct.tsx` | استبدال input date بـ DatePickerField |
-| `src/pages/Archive.tsx` | استبدال input date بـ DatePickerField |
-| `src/pages/ProductDetail.tsx` | استبدال input date بـ DatePickerField |
-| `src/pages/Dashboard.tsx` | استبدال input date بـ DatePickerField |
-| `src/pages/SyncedDataPage.tsx` | استبدال input date بـ DatePickerField |
+| Migration جديد | إضافة عمودي `cancelled` و `total_cancelled` |
+| `supabase/functions/receive-orders/index.ts` | تخزين + تجميع `cancelled` |
+| `src/store/useSyncStore.ts` | تحديث interfaces |
+| `src/pages/SyncedDataPage.tsx` | عرض الملغاة + نسبة الإلغاء + تحسين الشريط |
 
