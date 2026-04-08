@@ -536,8 +536,23 @@ export default function SyncedDataPage() {
                   </div>
                 )}
 
-                {/* Delete button */}
-                <div className="pt-2 border-t border-border/30">
+                {/* Action buttons */}
+                <div className="pt-2 border-t border-border/30 flex items-center gap-2 flex-wrap">
+                  {/* Archive button */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs text-primary hover:text-primary hover:bg-primary/10 border-primary/30"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setArchiveDialog({ open: true, productName: p.product.name, exporting: false });
+                    }}
+                  >
+                    <Archive className="h-3.5 w-3.5 ml-1" />
+                    حفظ في الأرشيف
+                  </Button>
+
+                  {/* Delete button */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10">
