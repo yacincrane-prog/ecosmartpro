@@ -40,7 +40,9 @@ interface ProductStat {
   confirmed: number;
   delivered: number;
   returned: number;
+  cancelled: number;
   confirmationRate: number;
+  cancellationRate: number;
   deliveryRate: number;
   revenue: number;
   profit: number;
@@ -123,7 +125,7 @@ export default function SyncedDataPage() {
 
   const productStats: ProductStat[] = useMemo(() => {
     const stats = displayProducts.map(product => {
-      let created: number, confirmed: number, delivered: number, returned: number;
+      let created: number, confirmed: number, delivered: number, returned: number, cancelled: number;
 
       if (dateFrom && dateTo) {
         const filtered = dailyStats.filter(s =>
@@ -135,14 +137,17 @@ export default function SyncedDataPage() {
         confirmed = filtered.reduce((s, d) => s + d.confirmed, 0);
         delivered = filtered.reduce((s, d) => s + d.delivered, 0);
         returned = filtered.reduce((s, d) => s + d.returned, 0);
+        cancelled = filtered.reduce((s, d) => s + (d.cancelled || 0), 0);
       } else {
         created = product.total_created;
         confirmed = product.total_confirmed;
         delivered = product.total_delivered;
         returned = product.total_returned;
+        cancelled = product.total_cancelled || 0;
       }
 
       const confirmationRate = created > 0 ? (confirmed / created) * 100 : 0;
+      const cancellationRate = created > 0 ? (cancelled / created) * 100 : 0;
       const deliveryRate = (delivered + returned) > 0 ? (delivered / (delivered + returned)) * 100 : 0;
 
       const manual = manualInputs[product.name] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
@@ -171,8 +176,8 @@ export default function SyncedDataPage() {
 
       return {
         product,
-        created, confirmed, delivered, returned,
-        confirmationRate, deliveryRate,
+        created, confirmed, delivered, returned, cancelled,
+        confirmationRate, cancellationRate, deliveryRate,
         revenue, profit, totalCost,
         adSpendDZD, purchaseCost, deliveryCost, returnCost,
         confirmationCost, operationCost, packagingTotal,
@@ -195,15 +200,22 @@ export default function SyncedDataPage() {
         confirmed: acc.confirmed + p.confirmed,
         delivered: acc.delivered + p.delivered,
         returned: acc.returned + p.returned,
+        cancelled: acc.cancelled + p.cancelled,
         revenue: acc.revenue + p.revenue,
         profit: acc.profit + p.profit,
       }),
-      { created: 0, confirmed: 0, delivered: 0, returned: 0, revenue: 0, profit: 0 }
+      { created: 0, confirmed: 0, delivered: 0, returned: 0, cancelled: 0, revenue: 0, profit: 0 }
     );
   }, [productStats]);
 
   const totalConfirmationRate = totals.created > 0 ? (totals.confirmed / totals.created) * 100 : 0;
+  const totalCancellationRate = totals.created > 0 ? (totals.cancelled / totals.created) * 100 : 0;
   const totalDeliveryRate = (totals.delivered + totals.returned) > 0 ? (totals.delivered / (totals.delivered + totals.returned)) * 100 : 0;
+
+  const uniqueSyncDays = useMemo(() => {
+    const dates = new Set(dailyStats.map(s => s.stat_date));
+    return dates.size;
+  }, [dailyStats]);
 
   // Smart summary - always shown
   const summary = useMemo(() => {
@@ -245,10 +257,15 @@ export default function SyncedDataPage() {
       {/* Sync banner */}
       <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
         <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
-        <span className="text-sm text-emerald-400">
-          آخر مزامنة: {lastSync ? new Date(lastSync).toLocaleString('ar-DZ') : '—'}
-        </span>
-        <Button variant="ghost" size="icon" className="mr-auto" onClick={() => fetchAllSyncedData()}>
+        <div className="flex-1">
+          <span className="text-sm text-emerald-400">
+            آخر مزامنة: {lastSync ? new Date(lastSync).toLocaleString('ar-DZ') : '—'}
+          </span>
+          <span className="text-xs text-muted-foreground block">
+            {products.length} منتج · {uniqueSyncDays} يوم
+          </span>
+        </div>
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => fetchAllSyncedData()}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
@@ -338,14 +355,16 @@ export default function SyncedDataPage() {
         <>
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground">الأداء</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <StatCard label="الطلبات المنشأة" value={totals.created} />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <StatCard label="المنشأة" value={totals.created} />
               <StatCard label="المؤكدة" value={totals.confirmed} />
+              <StatCard label="الملغاة" value={totals.cancelled} variant="warning" />
               <StatCard label="المسلمة" value={totals.delivered} variant="profit" />
               <StatCard label="المرتجعة" value={totals.returned} variant="loss" />
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <StatCard label="نسبة التأكيد" value={totalConfirmationRate} suffix="%" variant={totalConfirmationRate >= 50 ? 'profit' : 'warning'} />
+              <StatCard label="نسبة الإلغاء" value={totalCancellationRate} suffix="%" variant={totalCancellationRate <= 10 ? 'profit' : 'loss'} />
               <StatCard label="نسبة التوصيل" value={totalDeliveryRate} suffix="%" variant={totalDeliveryRate >= 60 ? 'profit' : 'loss'} />
             </div>
           </div>
@@ -424,7 +443,7 @@ export default function SyncedDataPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 text-muted-foreground">
-                      <span>{p.created}↗ {p.confirmed}✓ {p.delivered}📦 {p.returned}↩</span>
+                      <span>{p.created}↗ {p.confirmed}✓ {p.cancelled > 0 ? <span className="text-orange-400">{p.cancelled}✕</span> : null} {p.delivered}📦 {p.returned}↩</span>
                       {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </div>
                   </div>
@@ -465,10 +484,12 @@ export default function SyncedDataPage() {
                 </div>
 
                 {/* Read-only stats - merged into one grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   <ReadOnlyField label="نسبة التأكيد" value={`${p.confirmationRate.toFixed(1)}%`} />
+                  <ReadOnlyField label="نسبة الإلغاء" value={`${p.cancellationRate.toFixed(1)}%`} />
                   <ReadOnlyField label="المنشأة" value={p.created} />
                   <ReadOnlyField label="المؤكدة" value={p.confirmed} />
+                  <ReadOnlyField label="الملغاة" value={p.cancelled} />
                   <ReadOnlyField label="المسلمة" value={p.delivered} />
                   <ReadOnlyField label="المرتجعة" value={p.returned} />
                 </div>

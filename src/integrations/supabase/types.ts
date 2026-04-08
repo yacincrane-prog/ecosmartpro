@@ -379,6 +379,7 @@ export type Database = {
       }
       synced_daily_stats: {
         Row: {
+          cancelled: number
           confirmed: number
           created: number
           delivered: number
@@ -390,6 +391,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cancelled?: number
           confirmed?: number
           created?: number
           delivered?: number
@@ -401,6 +403,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cancelled?: number
           confirmed?: number
           created?: number
           delivered?: number
@@ -457,6 +460,7 @@ export type Database = {
           purchase_price: number
           sale_price: number
           synced_at: string
+          total_cancelled: number
           total_confirmed: number
           total_created: number
           total_delivered: number
@@ -470,6 +474,7 @@ export type Database = {
           purchase_price?: number
           sale_price?: number
           synced_at?: string
+          total_cancelled?: number
           total_confirmed?: number
           total_created?: number
           total_delivered?: number
@@ -483,6 +488,7 @@ export type Database = {
           purchase_price?: number
           sale_price?: number
           synced_at?: string
+          total_cancelled?: number
           total_confirmed?: number
           total_created?: number
           total_delivered?: number

@@ -20,6 +20,7 @@ export interface SyncedProduct {
   total_confirmed: number;
   total_delivered: number;
   total_returned: number;
+  total_cancelled: number;
   synced_at: string;
 }
 
@@ -31,6 +32,7 @@ export interface SyncedDailyStat {
   confirmed: number;
   delivered: number;
   returned: number;
+  cancelled: number;
   synced_at: string;
 }
 
