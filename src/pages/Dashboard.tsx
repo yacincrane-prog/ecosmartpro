@@ -92,17 +92,32 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold">لوحة القيادة</h2>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">من</label>
-            <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold">لوحة القيادة</h2>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">من</label>
+              <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setActivePreset(''); }} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground">إلى</label>
+              <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setActivePreset(''); }} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">إلى</label>
-            <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="input-field rounded-md px-2 py-1 text-sm bg-muted border border-border" />
-          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {presets.map((p) => (
+            <Button
+              key={p.label}
+              variant={activePreset === p.label ? 'default' : 'outline'}
+              size="sm"
+              className="text-xs h-7 px-3"
+              onClick={() => applyPreset(p)}
+            >
+              {p.label}
+            </Button>
+          ))}
         </div>
       </div>
 
