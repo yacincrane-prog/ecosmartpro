@@ -289,7 +289,21 @@ function AddPeriodForm({ lastPeriod, onAdd, onCancel }: {
     dateTo: new Date().toISOString().split('T')[0],
   });
 
+  const validate = () => {
+    const sp = Number(form.sellingPrice);
+    const pp = Number(form.purchasePrice);
+    const recv = Number(form.receivedOrders);
+    const conf = Number(form.confirmedOrders);
+    const del = Number(form.deliveredOrders);
+    if (sp <= 0 || pp <= 0) { toast.error('سعر البيع وسعر الشراء يجب أن يكونا أكبر من 0'); return false; }
+    if (recv < conf) { toast.error('المستلمة يجب أن تكون ≥ المؤكدة'); return false; }
+    if (conf < del) { toast.error('المؤكدة يجب أن تكون ≥ الواصلة'); return false; }
+    if (form.dateTo < form.dateFrom) { toast.error('تاريخ النهاية يجب أن يكون بعد تاريخ البداية'); return false; }
+    return true;
+  };
+
   const handleSubmit = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
       await onAdd({
@@ -343,7 +357,21 @@ function PeriodEditForm({ period, onSave, onCancel }: {
     dateTo: period.dateTo,
   });
 
+  const validate = () => {
+    const sp = Number(form.sellingPrice);
+    const pp = Number(form.purchasePrice);
+    const recv = Number(form.receivedOrders);
+    const conf = Number(form.confirmedOrders);
+    const del = Number(form.deliveredOrders);
+    if (sp <= 0 || pp <= 0) { toast.error('سعر البيع وسعر الشراء يجب أن يكونا أكبر من 0'); return false; }
+    if (recv < conf) { toast.error('المستلمة يجب أن تكون ≥ المؤكدة'); return false; }
+    if (conf < del) { toast.error('المؤكدة يجب أن تكون ≥ الواصلة'); return false; }
+    if (form.dateTo < form.dateFrom) { toast.error('تاريخ النهاية يجب أن يكون بعد تاريخ البداية'); return false; }
+    return true;
+  };
+
   const handleSubmit = async () => {
+    if (!validate()) return;
     setLoading(true);
     try {
       await onSave({
