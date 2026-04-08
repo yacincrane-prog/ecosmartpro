@@ -584,6 +584,82 @@ export default function SyncedDataPage() {
           </Collapsible>
         );
       })}
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog open={archiveDialog.open} onOpenChange={(open) => !archiveDialog.exporting && setArchiveDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5 text-primary" />
+              حفظ في الأرشيف
+            </DialogTitle>
+            <DialogDescription>
+              سيتم تجميع بيانات <strong>{archiveDialog.productName}</strong> في فترة واحدة ونقلها إلى الأرشيف.
+            </DialogDescription>
+          </DialogHeader>
+
+          {archiveDialog.productName && (() => {
+            const product = products.find(p => p.name === archiveDialog.productName);
+            const manual = manualInputs[archiveDialog.productName];
+            const stats = dailyStats.filter(s => s.product_name === archiveDialog.productName);
+            const dates = stats.map(s => s.stat_date).sort();
+            
+            if (!product) return null;
+            
+            return (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-muted/50 border border-border/50">
+                  <div>
+                    <p className="text-xs text-muted-foreground">الطلبات المنشأة</p>
+                    <p className="font-semibold">{product.total_created}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">المسلمة</p>
+                    <p className="font-semibold">{product.total_delivered}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">سعر البيع</p>
+                    <p className="font-semibold">{(manual?.salePriceOverride ?? product.sale_price).toLocaleString()} د.ج</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">الفترة</p>
+                    <p className="font-semibold text-xs">
+                      {dates.length > 0 ? `${dates[0]} → ${dates[dates.length - 1]}` : 'اليوم'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setArchiveDialog({ open: false, productName: '', exporting: false })}
+              disabled={archiveDialog.exporting}
+            >
+              إلغاء
+            </Button>
+            <Button 
+              onClick={() => handleExportToArchive(archiveDialog.productName)}
+              disabled={archiveDialog.exporting}
+              className="gap-2"
+            >
+              {archiveDialog.exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جاري النقل...
+                </>
+              ) : (
+                <>
+                  <Archive className="h-4 w-4" />
+                  نقل للأرشيف
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
