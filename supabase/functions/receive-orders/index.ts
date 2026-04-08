@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
   // Test mode
   if (body.test === true) {
     await supabase.from("api_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", tokenRow.id);
-    return new Response(JSON.stringify({ ok: true }), {
+    return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
@@ -70,55 +70,79 @@ Deno.serve(async (req) => {
   const products = Array.isArray(body.products) ? body.products : [];
   const syncedAt = body.synced_at || new Date().toISOString();
 
-  // 1. Delete old data for this user
-  await supabase.from("synced_daily_stats").delete().eq("user_id", userId);
-  await supabase.from("synced_products").delete().eq("user_id", userId);
-
-  // 2. Insert products and daily stats
   let productsReceived = 0;
   let statsReceived = 0;
 
   for (const p of products) {
-    const { error } = await supabase.from("synced_products").upsert(
+    const productName = String(p.name || "");
+
+    // Upsert product (by user_id + name)
+    const { error: pErr } = await supabase.from("synced_products").upsert(
       {
         user_id: userId,
-        name: String(p.name || ""),
-        sale_price: Number(p.sale_price) || 0,
-        purchase_price: Number(p.purchase_price) || 0,
-        delivery_discount: Number(p.delivery_discount) || 0,
-        total_created: Number(p.total_created) || 0,
-        total_confirmed: Number(p.total_confirmed) || 0,
-        total_delivered: Number(p.total_delivered) || 0,
-        total_returned: Number(p.total_returned) || 0,
+        name: productName,
+        sale_price: p.sale_price != null ? Number(p.sale_price) : 0,
+        purchase_price: p.purchase_price != null ? Number(p.purchase_price) : 0,
+        delivery_discount: 0,
+        total_created: 0,
+        total_confirmed: 0,
+        total_delivered: 0,
+        total_returned: 0,
         synced_at: syncedAt,
       },
       { onConflict: "user_id,name" }
     );
-    if (!error) productsReceived++;
+    if (!pErr) productsReceived++;
 
-    // Insert daily stats
+    // Upsert daily stats
     const dailyStats = Array.isArray(p.daily_stats) ? p.daily_stats : [];
-    if (dailyStats.length > 0) {
-      const statsRows = dailyStats.map((d: any) => ({
+    for (const d of dailyStats) {
+      // Delete existing row for this user+product+date, then insert
+      await supabase
+        .from("synced_daily_stats")
+        .delete()
+        .eq("user_id", userId)
+        .eq("product_name", productName)
+        .eq("stat_date", String(d.date || ""));
+
+      const { error: sErr } = await supabase.from("synced_daily_stats").insert({
         user_id: userId,
-        product_name: String(p.name || ""),
+        product_name: productName,
         stat_date: String(d.date || ""),
         created: Number(d.created) || 0,
         confirmed: Number(d.confirmed) || 0,
         delivered: Number(d.delivered) || 0,
         returned: Number(d.returned) || 0,
         synced_at: syncedAt,
-      }));
-      const { error: statsError } = await supabase.from("synced_daily_stats").insert(statsRows);
-      if (!statsError) statsReceived += statsRows.length;
+      });
+      if (!sErr) statsReceived++;
+    }
+
+    // Update product totals from daily stats aggregation
+    if (dailyStats.length > 0) {
+      const totalCreated = dailyStats.reduce((s: number, d: any) => s + (Number(d.created) || 0), 0);
+      const totalConfirmed = dailyStats.reduce((s: number, d: any) => s + (Number(d.confirmed) || 0), 0);
+      const totalDelivered = dailyStats.reduce((s: number, d: any) => s + (Number(d.delivered) || 0), 0);
+      const totalReturned = dailyStats.reduce((s: number, d: any) => s + (Number(d.returned) || 0), 0);
+
+      await supabase
+        .from("synced_products")
+        .update({
+          total_created: totalCreated,
+          total_confirmed: totalConfirmed,
+          total_delivered: totalDelivered,
+          total_returned: totalReturned,
+        })
+        .eq("user_id", userId)
+        .eq("name", productName);
     }
   }
 
-  // 3. Update last_used_at
+  // Update last_used_at
   await supabase.from("api_tokens").update({ last_used_at: new Date().toISOString() }).eq("id", tokenRow.id);
 
   return new Response(
-    JSON.stringify({ ok: true, products_received: productsReceived, stats_received: statsReceived }),
+    JSON.stringify({ success: true, products_received: productsReceived, stats_received: statsReceived }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });
