@@ -4,7 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { 
   Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off, 
   Calendar, ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertCircle,
-  DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save, Trash2, ArrowUpDown
+  DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save, Trash2, ArrowUpDown, Archive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
@@ -15,8 +15,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
+import { toast } from 'sonner';
 
 type Decision = 'scale' | 'risk' | 'kill';
 
