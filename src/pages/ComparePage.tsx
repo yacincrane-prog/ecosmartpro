@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, aggregatePeriods } from '@/lib/calculations';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 
 // Determine which value is best/worst for a given metric
@@ -46,13 +47,7 @@ export default function ComparePage() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return <GenericPageSkeleton />;
 
   const barData = analyses.map(a => ({
     name: `${a.name.substring(0, 12)}`,

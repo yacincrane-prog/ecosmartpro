@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import StatCard from '@/components/StatCard';
 import { toast } from 'sonner';
 import { ArrowRight, Loader2, Calendar, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import ProductDetailSkeleton from '@/components/skeletons/ProductDetailSkeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 export default function ProductDetail() {
@@ -46,13 +47,7 @@ export default function ProductDetail() {
     return calculateAnalysis(input, settings);
   }, [product, settings, form, editing, selectedPeriodId]);
 
-  if (storeLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (storeLoading) return <ProductDetailSkeleton />;
 
   if (!product || !analysis) {
     return <div className="text-center py-16 text-muted-foreground">المنتج غير موجود</div>;

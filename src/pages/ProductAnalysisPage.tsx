@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { calculateAnalysis, periodToProductInput } from '@/lib/calculations';
 import StatCard from '@/components/StatCard';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export default function ProductAnalysisPage() {
@@ -12,13 +13,7 @@ export default function ProductAnalysisPage() {
   const navigate = useNavigate();
   const product = products.find(p => p.id === id);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return <GenericPageSkeleton />;
 
   if (!product) {
     return <div className="text-center py-16 text-muted-foreground">المنتج غير موجود</div>;

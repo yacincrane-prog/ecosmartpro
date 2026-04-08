@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Trash2, Edit, BarChart3, PlusCircle, Loader2, ChevronDown, ChevronUp, Calendar, X, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import ArchiveSkeleton from '@/components/skeletons/ArchiveSkeleton';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -71,13 +72,7 @@ export default function Archive() {
     setDeleteConfirm(null);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return <ArchiveSkeleton />;
 
   return (
     <div className="space-y-6">
