@@ -4,7 +4,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { 
   Loader2, RefreshCw, CheckCircle2, AlertTriangle, Link2Off, 
   Calendar, ChevronDown, ChevronUp, TrendingUp, TrendingDown, AlertCircle,
-  DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save, Trash2, ArrowUpDown
+  DollarSign, Package, Truck, RotateCcw, Phone, Settings2, Pencil, RotateCw, Save, Trash2, ArrowUpDown, Archive
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import GenericPageSkeleton from '@/components/skeletons/GenericPageSkeleton';
@@ -15,8 +15,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useNavigate } from 'react-router-dom';
 import StatCard from '@/components/StatCard';
+import { toast } from 'sonner';
 
 type Decision = 'scale' | 'risk' | 'kill';
 
@@ -56,8 +58,8 @@ interface ProductStat {
 type SortOption = 'default' | 'profit-desc' | 'profit-asc' | 'delivery-desc';
 
 export default function SyncedDataPage() {
-  const { products, dailyStats, manualInputs, loading, fetchAllSyncedData, saveManualInput, deleteSyncedProduct } = useSyncStore();
-  const { settings } = useAppStore();
+  const { products, dailyStats, manualInputs, loading, fetchAllSyncedData, saveManualInput, deleteSyncedProduct, exportToArchive } = useSyncStore();
+  const { settings, fetchProducts } = useAppStore();
   const navigate = useNavigate();
 
   const [dateFrom, setDateFrom] = useState('');
@@ -65,7 +67,30 @@ export default function SyncedDataPage() {
   const [selectedProduct, setSelectedProduct] = useState<string>('all');
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<SortOption>('default');
+  const [archiveDialog, setArchiveDialog] = useState<{ open: boolean; productName: string; exporting: boolean }>({ open: false, productName: '', exporting: false });
 
+  const handleExportToArchive = async (productName: string) => {
+    setArchiveDialog(prev => ({ ...prev, exporting: true }));
+    const result = await exportToArchive(productName, settings);
+    setArchiveDialog({ open: false, productName: '', exporting: false });
+    
+    if (result) {
+      await fetchProducts();
+      toast.success(
+        result.isExisting 
+          ? `تم إضافة فترة جديدة لـ "${productName}" في الأرشيف`
+          : `تم نقل "${productName}" إلى الأرشيف بنجاح`,
+        {
+          action: {
+            label: 'عرض في الأرشيف',
+            onClick: () => navigate(`/product/${result.productId}`),
+          },
+        }
+      );
+    } else {
+      toast.error('حدث خطأ أثناء النقل إلى الأرشيف');
+    }
+  };
   useEffect(() => {
     fetchAllSyncedData();
   }, []);
@@ -511,8 +536,23 @@ export default function SyncedDataPage() {
                   </div>
                 )}
 
-                {/* Delete button */}
-                <div className="pt-2 border-t border-border/30">
+                {/* Action buttons */}
+                <div className="pt-2 border-t border-border/30 flex items-center gap-2 flex-wrap">
+                  {/* Archive button */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="text-xs text-primary hover:text-primary hover:bg-primary/10 border-primary/30"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setArchiveDialog({ open: true, productName: p.product.name, exporting: false });
+                    }}
+                  >
+                    <Archive className="h-3.5 w-3.5 ml-1" />
+                    حفظ في الأرشيف
+                  </Button>
+
+                  {/* Delete button */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="text-xs text-red-400 hover:text-red-300 hover:bg-red-500/10">
@@ -544,6 +584,82 @@ export default function SyncedDataPage() {
           </Collapsible>
         );
       })}
+
+      {/* Archive Confirmation Dialog */}
+      <Dialog open={archiveDialog.open} onOpenChange={(open) => !archiveDialog.exporting && setArchiveDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Archive className="h-5 w-5 text-primary" />
+              حفظ في الأرشيف
+            </DialogTitle>
+            <DialogDescription>
+              سيتم تجميع بيانات <strong>{archiveDialog.productName}</strong> في فترة واحدة ونقلها إلى الأرشيف.
+            </DialogDescription>
+          </DialogHeader>
+
+          {archiveDialog.productName && (() => {
+            const product = products.find(p => p.name === archiveDialog.productName);
+            const manual = manualInputs[archiveDialog.productName];
+            const stats = dailyStats.filter(s => s.product_name === archiveDialog.productName);
+            const dates = stats.map(s => s.stat_date).sort();
+            
+            if (!product) return null;
+            
+            return (
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-2 gap-2 p-3 rounded-lg bg-muted/50 border border-border/50">
+                  <div>
+                    <p className="text-xs text-muted-foreground">الطلبات المنشأة</p>
+                    <p className="font-semibold">{product.total_created}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">المسلمة</p>
+                    <p className="font-semibold">{product.total_delivered}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">سعر البيع</p>
+                    <p className="font-semibold">{(manual?.salePriceOverride ?? product.sale_price).toLocaleString()} د.ج</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">الفترة</p>
+                    <p className="font-semibold text-xs">
+                      {dates.length > 0 ? `${dates[0]} → ${dates[dates.length - 1]}` : 'اليوم'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter className="gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setArchiveDialog({ open: false, productName: '', exporting: false })}
+              disabled={archiveDialog.exporting}
+            >
+              إلغاء
+            </Button>
+            <Button 
+              onClick={() => handleExportToArchive(archiveDialog.productName)}
+              disabled={archiveDialog.exporting}
+              className="gap-2"
+            >
+              {archiveDialog.exporting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جاري النقل...
+                </>
+              ) : (
+                <>
+                  <Archive className="h-4 w-4" />
+                  نقل للأرشيف
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
