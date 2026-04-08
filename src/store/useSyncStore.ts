@@ -178,4 +178,78 @@ export const useSyncStore = create<SyncState>((set, get) => ({
       manualInputs: Object.fromEntries(Object.entries(state.manualInputs).filter(([k]) => k !== productName)),
     }));
   },
+
+  exportToArchive: async (productName: string, settings: { currencyRate: number; returnCost: number; confirmationCost: number; operationCostPerOrder: number }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const state = get();
+    const product = state.products.find(p => p.name === productName);
+    if (!product) return null;
+
+    const manual = state.manualInputs[productName] || { adSpend: 0, packagingCost: 0, salePriceOverride: null, purchasePriceOverride: null, deliveryDiscountOverride: null };
+    const stats = state.dailyStats.filter(s => s.product_name === productName);
+
+    // Aggregate daily stats
+    const created = stats.length > 0
+      ? stats.reduce((s, d) => s + d.created, 0)
+      : product.total_created;
+    const confirmed = stats.length > 0
+      ? stats.reduce((s, d) => s + d.confirmed, 0)
+      : product.total_confirmed;
+    const delivered = stats.length > 0
+      ? stats.reduce((s, d) => s + d.delivered, 0)
+      : product.total_delivered;
+
+    // Date range
+    const dates = stats.map(s => s.stat_date).sort();
+    const dateFrom = dates.length > 0 ? dates[0] : new Date().toISOString().split('T')[0];
+    const dateTo = dates.length > 0 ? dates[dates.length - 1] : new Date().toISOString().split('T')[0];
+
+    // Prices
+    const sellingPrice = manual.salePriceOverride ?? product.sale_price;
+    const purchasePrice = manual.purchasePriceOverride ?? product.purchase_price;
+    const perUnitDiscount = manual.deliveryDiscountOverride ?? (product.total_delivered > 0 ? product.delivery_discount / product.total_delivered : 0);
+
+    // Check duplicate
+    const { data: existing } = await supabase
+      .from('products')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('name', productName)
+      .maybeSingle();
+
+    let productId: string;
+
+    if (existing) {
+      productId = existing.id;
+    } else {
+      const { data: newProduct, error: pErr } = await supabase
+        .from('products')
+        .insert({ user_id: user.id, name: productName })
+        .select()
+        .single();
+      if (pErr || !newProduct) return null;
+      productId = newProduct.id;
+    }
+
+    // Insert period
+    const { error: prErr } = await supabase.from('product_periods').insert({
+      product_id: productId,
+      selling_price: sellingPrice,
+      purchase_price: purchasePrice,
+      received_orders: created,
+      confirmed_orders: confirmed,
+      delivered_orders: delivered,
+      ad_spend_usd: manual.adSpend,
+      delivery_discount: perUnitDiscount,
+      packaging_cost: manual.packagingCost,
+      date_from: dateFrom,
+      date_to: dateTo,
+    });
+
+    if (prErr) return null;
+
+    return { productId, isExisting: !!existing };
+  },
 }));
